@@ -1,0 +1,27 @@
+{
+  "private": true,
+  "name": "aarongarciah.github.io",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "parcel watch src/index.html",
+    "build": "parcel build src/index.html --no-source-maps",
+    "serve": "npm run build && npx serve dist"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aarongarciah/aarongarciah.github.io.git"
+  },
+  "keywords": [],
+  "author": "Aarón García Hervás <aarongarciahervas@gmail.com> (https://aarongarciah.com)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/aarongarciah/aarongarciah.github.io/issues"
+  },
+  "homepage": "https://github.com/aarongarciah/aarongarciah.github.io#readme",
+  "devDependencies": {
+    "autoprefixer": "^9.7.4",
+    "parcel-bundler": "^1.12.4"
+  }
+}
