@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "start": "parcel watch src/index.html",
-    "build": "parcel build src/index.html --no-source-maps",
+    "build": "parcel build src/index.html --no-source-maps && cp src/_redirects dist/_redirects",
     "serve": "npm run build && npx serve dist"
   },
   "repository": {
