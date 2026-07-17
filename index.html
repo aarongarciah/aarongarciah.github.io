@@ -10,7 +10,7 @@
     <title>Aarón García Hervás — Design Engineer at Base UI</title>
     <meta
       name="description"
-      content="Aarón García Hervás is a design engineer at Base UI. Solving problems so you don't have to."
+      content="Aarón García Hervás — design engineer @ Base UI + Material UI"
     />
     <link rel="canonical" href="https://aarongarciah.com/" />
 
@@ -30,7 +30,7 @@
     <meta property="og:image:height" content="630" />
     <meta
       property="og:image:alt"
-      content="Aarón García Hervás, Design Engineer at Base UI. Solving problems so you don't have to."
+      content="Aarón García Hervás — design engineer @ Base UI + Material UI"
     />
     <meta property="og:locale" content="en_US" />
     <meta property="profile:first_name" content="Aarón" />
@@ -64,42 +64,18 @@
 
     <style>
       :root {
-        color-scheme: light dark;
-
-        --gray-s1: oklch(99.00% 0.0000 0.00deg);
-        --gray-s2: oklch(97.50% 0.0000 0.00deg);
-        --gray-c1: oklch(95.25% 0.0000 0.00deg);
-        --gray-c2: oklch(94.00% 0.0000 0.00deg);
-        --gray-c3: oklch(93.25% 0.0000 0.00deg);
-        --gray-p1: oklch(64.00% 0.0000 0.00deg);
-        --gray-p2: oklch(62.00% 0.0000 0.00deg);
-        --gray-t1: oklch(57.00% 0.0000 0.00deg);
-        --gray-t2: oklch(50.00% 0.0000 0.00deg);
-        --gray-t3: oklch(30.00% 0.0000 0.00deg);
-
-        --fg: var(--gray-t3);
-        --fg-selection: white;
-        /* Off the gray ramp deliberately. The sky behind the text is now
-           (173,214,240), and the ramp's nearest step (t2, 50%) only reaches 3.91:1
-           on it. 46% is the lightest that still clears 4.5:1, which is what lets the
-           glow drop to 0.5 and show real sky behind the text. */
+        --fg: oklch(30.00% 0.0000 0.00deg);
         --muted: oklch(46% 0 0);
-        /* Focus ring, in the sky's 240 hue family. Chroma is capped at what hue
-           240 can actually hold in sRGB — 0.17 clips the red channel to 0 and the
-           browser gamut-maps it to a colour you did not pick. Clears 3:1 (WCAG
-           1.4.11) against the lightest sky the ring can land on. */
-        --accent: oklch(50% 0.114 240);
         --selection: oklch(76% 0.085 240);
         --sky-top: #cce4f6;
         --sky-bottom: #9eccea;
+        color-scheme: light dark;
       }
 
       @media (prefers-color-scheme: dark) {
         :root {
           --fg: oklch(93% 0.01 148);
-          --fg-selection: white;
           --muted: oklch(68% 0.02 148);
-          --accent: oklch(72% 0.13 240);
           --selection: oklch(45% 0.056 240);
           --sky-top: #0f1720;
           --sky-bottom: #131d26;
@@ -148,7 +124,6 @@
           filter 5s cubic-bezier(0.45, 0.05, 0.25, 1),
           transform 5s cubic-bezier(0.45, 0.05, 0.25, 1);
       }
-
       #sky.sharp {
         filter: blur(0);
         transform: scale(1);
@@ -178,7 +153,6 @@
         font-weight: 500;
         letter-spacing: -0.005em;
       }
-
       p {
         color: var(--muted);
       }
@@ -190,14 +164,13 @@
         text-underline-offset: 0.125rem;
         text-decoration-color: color-mix(in srgb, currentColor 50%, transparent);
       }
-
       a:hover {
         color: var(--fg);
         text-decoration-color: var(--fg);
       }
 
       :focus-visible {
-        outline: 2px solid var(--accent);
+        outline: 2px solid var(--fg);
         outline-offset: 3px;
         border-radius: 2px;
       }
@@ -206,11 +179,9 @@
         display: flex;
         gap: 1.5rem;
       }
-
       nav a {
         color: var(--muted);
       }
-
       nav a:hover {
         color: var(--fg);
       }
@@ -236,7 +207,7 @@
     </style>
   </head>
   <body>
-    <div id="sky-clip"><canvas id="sky" aria-hidden="true"></canvas></div>
+    <div id="sky-clip" aria-hidden="true"><canvas id="sky"></canvas></div>
     <main>
       <h1>Aarón García Hervás</h1>
       <p>
@@ -250,7 +221,6 @@
       </nav>
     </main>
     <script>
-      // Generative skys
       (() => {
         const cv = document.getElementById("sky");
         const gl =
@@ -262,7 +232,7 @@
             stencil: false,
             powerPreference: "low-power",
           });
-        if (!gl) return; // html keeps the flat --bg as the fallback
+        if (!gl) return;
         const PX = 3; // CSS px per dithered cell
         const VS = `attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}`;
         const FS = `precision highp float;
@@ -317,7 +287,7 @@ void main(){
           gl.linkProgram(prog);
           if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw gl.getProgramInfoLog(prog);
         } catch (e) {
-          return; // shader trouble: fall back to the flat background
+          return;
         }
         gl.useProgram(prog);
 
@@ -339,7 +309,6 @@ void main(){
         const dark = matchMedia("(prefers-color-scheme: dark)");
         const still = matchMedia("(prefers-reduced-motion: reduce)");
         let W = 0, H = 0;
-
         function setRamp() {
           const r = RAMP[dark.matches ? "dark" : "light"];
           ["c0", "c1", "c2", "c3", "c4"].forEach((n, i) =>
@@ -347,7 +316,6 @@ void main(){
           );
           gl.uniform1f(uDark, dark.matches ? 1 : 0);
         }
-
         // The glow is anchored to the text's real box, not to viewport proportions.
         // The clouds drift, so anywhere the glow misses will sooner or later have deep
         // sky behind it — measuring the content is what makes the contrast hold.
@@ -362,7 +330,6 @@ void main(){
           // viewports (landscape phones), washing the sky out to nothing.
           gl.uniform1f(uFall, Math.min(240, innerHeight * 0.3) / PX);
         }
-
         function resize() {
           W = Math.max(1, Math.ceil(innerWidth / PX));
           H = Math.max(1, Math.ceil(innerHeight / PX));
@@ -372,12 +339,10 @@ void main(){
           gl.uniform2f(uRes, W, H);
           measure();
         }
-
         function draw(t) {
           gl.uniform1f(uTime, t);
           gl.drawArrays(gl.TRIANGLES, 0, 3);
         }
-
         let raf = 0, t0 = 0, last = 0;
         function loop(ms) {
           if (!t0) t0 = ms;
