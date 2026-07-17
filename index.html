@@ -343,12 +343,11 @@ void main(){
           gl.uniform1f(uTime, t);
           gl.drawArrays(gl.TRIANGLES, 0, 3);
         }
-        let raf = 0, t0 = 0, last = 0;
+        let raf = 0, last = 0;
         function loop(ms) {
-          if (!t0) t0 = ms;
           // ~30fps. Cheap on the GPU now, but the clouds drift far too slowly for
           // anyone to tell it from 60, and this is a decorative background.
-          if (ms - last > 33) { last = ms; draw((ms - t0) / 1000); }
+          if (ms - last > 33) { last = ms; draw(ms / 1000); }
           raf = requestAnimationFrame(loop);
         }
         function start() {
@@ -358,7 +357,7 @@ void main(){
           // Always paint one frame synchronously. A WebGL canvas is opaque black
           // until its first draw, and this script runs before first paint — without
           // this the intro would spend its first frames blurring black.
-          draw(0);
+          draw(performance.now() / 1000);
           if (!(still.matches || document.hidden)) { last = 0; raf = requestAnimationFrame(loop); }
         }
         addEventListener("resize", start);
