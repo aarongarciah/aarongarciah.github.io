@@ -1,1 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect x="6" y="6" width="20" height="20" rx="5.5" transform="rotate(45 16 16)" fill="#00ab37"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 16 16">
+  <defs>
+    <clipPath id="frame"><rect width="16" height="16" rx="3"/></clipPath>
+  </defs>
+  <image width="16" height="16" clip-path="url(#frame)" image-rendering="pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAgMAAABinRfyAAAADFBMVEV9uuKt1vDY6vj8/Pzf34l4AAAAAW9yTlQBz6J3mgAAAFFJREFUCNdjEBRxcWEIBQIGQdGQUIbQsFVZDIIimaEMrmFLgYTb0kAgd+YUhpDQ7F9AVv5fhqmu9f8ZAkXX/2NwCdsPFBNd/5OhFcRaGvXqJQB6uxtsfGeLmgAAAABJRU5ErkJggg=="/>
+</svg>
