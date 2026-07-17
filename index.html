@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#cce4f6" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f1720" media="(prefers-color-scheme: dark)" />
+
+    <title>Aarón García Hervás — Design Engineer at Base UI</title>
+    <meta
+      name="description"
+      content="Aarón García Hervás is a design engineer at Base UI. Solving problems so you don't have to."
+    />
+    <link rel="canonical" href="https://aarongarciah.com/" />
+
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <meta property="og:type" content="profile" />
+    <meta property="og:url" content="https://aarongarciah.com/" />
+    <meta property="og:title" content="Aarón García Hervás — Design Engineer at Base UI" />
+    <meta
+      property="og:description"
+      content="Solving problems so you don't have to."
+    />
+    <meta property="og:image" content="https://aarongarciah.com/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Aarón García Hervás, Design Engineer at Base UI. Solving problems so you don't have to."
+    />
+    <meta property="og:locale" content="en_US" />
+    <meta property="profile:first_name" content="Aarón" />
+    <meta property="profile:last_name" content="García Hervás" />
+    <meta property="profile:username" content="aarongarciah" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:creator" content="@aarongarciah" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        "name": "Aarón García Hervás",
+        "givenName": "Aarón",
+        "familyName": "García Hervás",
+        "url": "https://aarongarciah.com/",
+        "jobTitle": "Design Engineer",
+        "worksFor": {
+          "@type": "Organization",
+          "name": "Base UI",
+          "url": "https://base-ui.com"
+        },
+        "sameAs": [
+          "https://github.com/aarongarciah",
+          "https://x.com/aarongarciah",
+          "https://www.linkedin.com/in/aarongarciah"
+        ]
+      }
+    </script>
+
+    <style>
+      :root {
+        color-scheme: light dark;
+
+        --gray-s1: oklch(99.00% 0.0000 0.00deg);
+        --gray-s2: oklch(97.50% 0.0000 0.00deg);
+        --gray-c1: oklch(95.25% 0.0000 0.00deg);
+        --gray-c2: oklch(94.00% 0.0000 0.00deg);
+        --gray-c3: oklch(93.25% 0.0000 0.00deg);
+        --gray-p1: oklch(64.00% 0.0000 0.00deg);
+        --gray-p2: oklch(62.00% 0.0000 0.00deg);
+        --gray-t1: oklch(57.00% 0.0000 0.00deg);
+        --gray-t2: oklch(50.00% 0.0000 0.00deg);
+        --gray-t3: oklch(30.00% 0.0000 0.00deg);
+
+        --fg: var(--gray-t3);
+        --fg-selection: white;
+        /* Off the gray ramp deliberately. The sky behind the text is now
+           (173,214,240), and the ramp's nearest step (t2, 50%) only reaches 3.91:1
+           on it. 46% is the lightest that still clears 4.5:1, which is what lets the
+           glow drop to 0.5 and show real sky behind the text. */
+        --muted: oklch(46% 0 0);
+        /* Focus ring, in the sky's 240 hue family. Chroma is capped at what hue
+           240 can actually hold in sRGB — 0.17 clips the red channel to 0 and the
+           browser gamut-maps it to a colour you did not pick. Clears 3:1 (WCAG
+           1.4.11) against the lightest sky the ring can land on. */
+        --accent: oklch(50% 0.114 240);
+        --selection: oklch(76% 0.085 240);
+        --sky-top: #cce4f6;
+        --sky-bottom: #9eccea;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fg: oklch(93% 0.01 148);
+          --fg-selection: white;
+          --muted: oklch(68% 0.02 148);
+          --accent: oklch(72% 0.13 240);
+          --selection: oklch(45% 0.056 240);
+          --sky-top: #0f1720;
+          --sky-bottom: #131d26;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+
+      body {
+        position: relative;
+        margin: 0;
+        height: 100dvh;
+        padding: clamp(2.75rem, 6vw, 4.5rem) clamp(1.5rem, 6vw, 4.5rem) clamp(5.5rem, 12vw, 9rem);
+        background-color: var(--sky-top);
+        background-image: linear-gradient(var(--sky-top), var(--sky-bottom));
+        color: var(--fg);
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* The sky canvas paints behind everything; this flat colour is the no-JS /
+         no-WebGL fallback. It lives on body, not html, so that it is body's own
+         declared background that propagates up to the canvas — html having any
+         background of its own would win and body's would never propagate at all. */
+      #sky-clip {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        overflow: hidden; /* fallback: overflow:clip is Safari 16+ */
+        overflow: clip;
+      }
+
+      #sky {
+        display: block;
+        width: 100%;
+        height: 100%;
+        image-rendering: pixelated;
+        filter: blur(36px);
+        transform: scale(1.12);
+        transition:
+          filter 5s cubic-bezier(0.45, 0.05, 0.25, 1),
+          transform 5s cubic-bezier(0.45, 0.05, 0.25, 1);
+      }
+
+      #sky.sharp {
+        filter: blur(0);
+        transform: scale(1);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #sky,
+        #sky.sharp {
+          filter: none;
+          transform: none;
+          transition: none;
+        }
+      }
+
+      main {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        justify-content: center;
+        align-items: center;
+        min-width: 100%;
+        min-height: 100%;
+      }
+
+      h1 {
+        font-size: 1rem;
+        font-weight: 500;
+        letter-spacing: -0.005em;
+      }
+
+      p {
+        color: var(--muted);
+      }
+
+      a {
+        font: inherit;
+        color: inherit;
+        text-decoration-thickness: 1px;
+        text-underline-offset: 0.125rem;
+        text-decoration-color: color-mix(in srgb, currentColor 50%, transparent);
+      }
+
+      a:hover {
+        color: var(--fg);
+        text-decoration-color: var(--fg);
+      }
+
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
+        border-radius: 2px;
+      }
+
+      nav {
+        display: flex;
+        gap: 1.5rem;
+      }
+
+      nav a {
+        color: var(--muted);
+      }
+
+      nav a:hover {
+        color: var(--fg);
+      }
+
+      /* Completes the accessible name ("gh" -> "gh, GitHub") without showing it.
+         The visible text stays the name's prefix, so WCAG 2.5.3 holds. */
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      ::selection {
+        background: var(--selection);
+        color: var(--fg-selection);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="sky-clip"><canvas id="sky" aria-hidden="true"></canvas></div>
+    <main>
+      <h1>Aarón García Hervás</h1>
+      <p>
+        design engineer @ <a href="https://base-ui.com" rel="noopener">Base&nbsp;UI</a>
+        + <a href="https://mui.com/material-ui/" rel="noopener">Material&nbsp;UI</a>
+      </p>
+      <nav class="social" aria-label="Elsewhere">
+        <a href="https://x.com/aarongarciah" rel="me noopener" aria-label="X/Twitter">x</a>
+        <a href="https://github.com/aarongarciah" rel="me noopener" aria-label="GitHub">gh</a>
+        <a href="https://www.linkedin.com/in/aarongarciah" rel="me noopener" aria-label="LinkedIn">in</a>
+      </nav>
+    </main>
+    <script>
+      // Generative skys
+      (() => {
+        const cv = document.getElementById("sky");
+        const gl =
+          cv &&
+          cv.getContext("webgl", {
+            alpha: false,
+            antialias: false,
+            depth: false,
+            stencil: false,
+            powerPreference: "low-power",
+          });
+        if (!gl) return; // html keeps the flat --bg as the fallback
+        const PX = 3; // CSS px per dithered cell
+        const VS = `attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}`;
+        const FS = `precision highp float;
+uniform vec2 uRes;uniform float uTime,uFall,uDark;uniform vec4 uCore;
+uniform vec3 c0,c1,c2,c3,c4;
+float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
+float noise(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.-2.*f);
+  return mix(mix(hash(i),hash(i+vec2(1,0)),u.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),u.x),u.y);}
+float fbm(vec2 p){float s=0.,a=.5;for(int i=0;i<3;i++){s+=a*noise(p);p*=2.;a*=.5;}return s/.875;}
+// compact ordered 8x8 — WebGL1 has no integer bit ops, so it is built by recursion
+float b2(vec2 a){a=floor(a);return fract(a.x*.5+a.y*a.y*.75);}
+float b4(vec2 a){return b2(.5*a)*.25+b2(a);}
+float b8(vec2 a){return b4(.5*a)*.25+b2(a);}
+void main(){
+  vec2 p=vec2(gl_FragCoord.x,uRes.y-gl_FragCoord.y); // top-left origin
+  float c=fbm(vec2(p.x*.016+uTime*.14,p.y*.026+uTime*.015));
+  c=clamp((c-.44)*2.6,0.,1.);
+  // deepens away from the sun in the top-left, so grade and glow pull the same way
+  float v=(.46-.34*(p.y/uRes.y))+c*.8;
+  vec2 d=max(max(uCore.xy-p,vec2(0.)),p-uCore.zw);
+  float g=1.-smoothstep(0.,uFall,length(d));
+  // clamp, don't overwrite: the sky is only stopped from going deep where the text
+  // sits, so clouds keep drifting through it and the worst-case pixel behind the
+  // type is pinned to a known ramp step at every frame and every viewport.
+  v=mix(max(v,.5*g),min(v,1.-.55*g),uDark);
+  v=clamp(v,0.,1.);
+  // step() is >=, so where Bayer returns 0 this rounds *up*: the reachable index is
+  // floor(v*4)+1, not floor(v*4). The glow's clamps are chosen to keep v off the
+  // integer boundary for that reason — landing exactly on it leaks one index further
+  // than the contrast budget allows.
+  float lv=v*4.,i=floor(lv);
+  float idx=clamp(i+step(b8(gl_FragCoord.xy),lv-i),0.,4.);
+  vec3 col=c0;
+  col=mix(col,c1,step(.5,idx));
+  col=mix(col,c2,step(1.5,idx));
+  col=mix(col,c3,step(2.5,idx));
+  col=mix(col,c4,step(3.5,idx));
+  gl_FragColor=vec4(col,1.);
+}`;
+        const sh = (type, src) => {
+          const s = gl.createShader(type);
+          gl.shaderSource(s, src);
+          gl.compileShader(s);
+          if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw gl.getShaderInfoLog(s);
+          return s;
+        };
+        let prog;
+        try {
+          prog = gl.createProgram();
+          gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS));
+          gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS));
+          gl.linkProgram(prog);
+          if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw gl.getProgramInfoLog(prog);
+        } catch (e) {
+          return; // shader trouble: fall back to the flat background
+        }
+        gl.useProgram(prog);
+
+        // one fullscreen triangle: fewer verts than a quad and no seam down the middle
+        const buf = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+        const loc = gl.getAttribLocation(prog, "a");
+        gl.enableVertexAttribArray(loc);
+        gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+        const U = (n) => gl.getUniformLocation(prog, n);
+        const uRes = U("uRes"), uTime = U("uTime"), uFall = U("uFall"), uDark = U("uDark"), uCore = U("uCore");
+        const RAMP = {
+          light: [[74, 150, 208], [125, 186, 226], [173, 214, 240], [216, 234, 248], [252, 252, 252]],
+          dark: [[8, 13, 8], [16, 25, 34], [27, 42, 56], [50, 74, 96], [84, 116, 144]],
+        };
+
+        const dark = matchMedia("(prefers-color-scheme: dark)");
+        const still = matchMedia("(prefers-reduced-motion: reduce)");
+        let W = 0, H = 0;
+
+        function setRamp() {
+          const r = RAMP[dark.matches ? "dark" : "light"];
+          ["c0", "c1", "c2", "c3", "c4"].forEach((n, i) =>
+            gl.uniform3f(U(n), r[i][0] / 255, r[i][1] / 255, r[i][2] / 255),
+          );
+          gl.uniform1f(uDark, dark.matches ? 1 : 0);
+        }
+
+        // The glow is anchored to the text's real box, not to viewport proportions.
+        // The clouds drift, so anywhere the glow misses will sooner or later have deep
+        // sky behind it — measuring the content is what makes the contrast hold.
+        function measure() {
+          const rg = document.createRange();
+          rg.selectNodeContents(document.querySelector("main"));
+          const r = rg.getBoundingClientRect(); // union of line boxes, not the block's full width
+          const pad = 26;
+          gl.uniform4f(uCore, (r.left - pad) / PX, (r.top - pad) / PX, (r.right + pad) / PX, (r.bottom + pad) / PX);
+          // The falloff is aesthetic only — the core is what guarantees contrast — so
+          // it can shrink freely. A flat 240px swallowed the whole screen on short
+          // viewports (landscape phones), washing the sky out to nothing.
+          gl.uniform1f(uFall, Math.min(240, innerHeight * 0.3) / PX);
+        }
+
+        function resize() {
+          W = Math.max(1, Math.ceil(innerWidth / PX));
+          H = Math.max(1, Math.ceil(innerHeight / PX));
+          cv.width = W;
+          cv.height = H;
+          gl.viewport(0, 0, W, H);
+          gl.uniform2f(uRes, W, H);
+          measure();
+        }
+
+        function draw(t) {
+          gl.uniform1f(uTime, t);
+          gl.drawArrays(gl.TRIANGLES, 0, 3);
+        }
+
+        let raf = 0, t0 = 0, last = 0;
+        function loop(ms) {
+          if (!t0) t0 = ms;
+          // ~30fps. Cheap on the GPU now, but the clouds drift far too slowly for
+          // anyone to tell it from 60, and this is a decorative background.
+          if (ms - last > 33) { last = ms; draw((ms - t0) / 1000); }
+          raf = requestAnimationFrame(loop);
+        }
+        function start() {
+          cancelAnimationFrame(raf);
+          setRamp();
+          resize();
+          // Always paint one frame synchronously. A WebGL canvas is opaque black
+          // until its first draw, and this script runs before first paint — without
+          // this the intro would spend its first frames blurring black.
+          draw(0);
+          if (!(still.matches || document.hidden)) { last = 0; raf = requestAnimationFrame(loop); }
+        }
+        addEventListener("resize", start);
+        document.addEventListener("visibilitychange", start);
+        dark.addEventListener("change", start);
+        still.addEventListener("change", start);
+        cv.addEventListener("webglcontextlost", (e) => { e.preventDefault(); cancelAnimationFrame(raf); });
+        cv.addEventListener("webglcontextrestored", start);
+        start();
+
+        // Kick the focus pull after one frame, so blur(36px) is the resolved starting
+        // style to transition *from*. Outside start(), so a resize never replays it.
+        requestAnimationFrame(() => cv.classList.add("sharp"));
+        // Once sharp, drop the filter entirely: blur(0) still costs a filter pass on
+        // every frame of a full-screen canvas that never stops redrawing.
+        cv.addEventListener("transitionend", (e) => {
+          if (e.propertyName !== "filter") return;
+          cv.style.filter = "none";
+          cv.style.transform = "none";
+        });
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,14 @@
+# aarongarciahervas.com -> aarongarciah.com.
+# Netlify already forces HTTPS and redirects the *.netlify.app subdomain to the
+# primary custom domain, so neither needs a rule here.
+[[redirects]]
+  from = "https://aarongarciahervas.com/*"
+  to = "https://aarongarciah.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://www.aarongarciahervas.com/*"
+  to = "https://aarongarciah.com/:splat"
+  status = 301
+  force = true
