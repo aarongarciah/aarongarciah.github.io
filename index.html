@@ -186,8 +186,8 @@
         color: var(--fg);
       }
 
-      /* Completes the accessible name ("gh" -> "gh, GitHub") without showing it.
-         The visible text stays the name's prefix, so WCAG 2.5.3 holds. */
+      /* Extends abbreviated labels with service names while keeping the visible
+         text as the accessible name's prefix, so WCAG 2.5.3 holds. */
       .sr-only {
         position: absolute;
         width: 1px;
@@ -216,8 +216,8 @@
       </p>
       <nav class="social" aria-label="Elsewhere">
         <a href="https://x.com/aarongarciah" rel="me noopener" aria-label="X/Twitter">x</a>
-        <a href="https://github.com/aarongarciah" rel="me noopener" aria-label="GitHub">gh</a>
-        <a href="https://www.linkedin.com/in/aarongarciah" rel="me noopener" aria-label="LinkedIn">in</a>
+        <a href="https://github.com/aarongarciah" rel="me noopener">gh<span class="sr-only">, GitHub</span></a>
+        <a href="https://www.linkedin.com/in/aarongarciah" rel="me noopener">in<span class="sr-only">, LinkedIn</span></a>
       </nav>
     </main>
     <script>
