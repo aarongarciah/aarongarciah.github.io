@@ -250,12 +250,16 @@ void main(){
   // type is pinned to a known ramp step at every frame and every viewport.
   v=mix(max(v,.5*g),min(v,1.-.55*g),uDark);
   v=clamp(v,0.,1.);
-  // step() is >=, so where Bayer returns 0 this rounds *up*: the reachable index is
+  // step() is >=, so a zero threshold rounds *up*: the reachable index is
   // floor(v*4)+1, not floor(v*4). The glow's clamps are chosen to keep v off the
   // integer boundary for that reason — landing exactly on it leaks one index further
   // than the contrast budget allows.
   float lv=v*4.,i=floor(lv);
-  float idx=clamp(i+step(b8(gl_FragCoord.xy),lv-i),0.,4.);
+  vec2 cell=floor(gl_FragCoord.xy),tile=floor(cell/8.);
+  vec2 phase=floor(vec2(hash(tile+vec2(17.,53.)),hash(tile+vec2(71.,29.)))*8.);
+  float ordered=b8(cell),shifted=b8(cell+phase);
+  float threshold=mix(ordered,shifted,.18*smoothstep(.65,1.,g));
+  float idx=clamp(i+step(threshold,lv-i),0.,4.);
   vec3 col=c0;
   col=mix(col,c1,step(.5,idx));
   col=mix(col,c2,step(1.5,idx));
