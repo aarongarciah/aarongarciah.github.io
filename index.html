@@ -2,10 +2,29 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#cce4f6" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0f1720" media="(prefers-color-scheme: dark)" />
+    <script>
+      (() => {
+        const schemes = ["light", "dark", "sunset"];
+        let scheme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        try {
+          const saved = localStorage.getItem("color-scheme");
+          if (schemes.includes(saved)) scheme = saved;
+        } catch {}
+        document.documentElement.dataset.scheme = scheme;
+        const themeColor = {
+          light: "#cce4f6",
+          dark: "#0f1720",
+          sunset: "#526c8b",
+        }[scheme];
+        document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+          meta.content = themeColor;
+        });
+      })();
+    </script>
 
     <title>Aarón García Hervás — design engineer @ Base UI + Material UI</title>
     <meta
@@ -64,21 +83,46 @@
 
     <style>
       :root {
-        --fg: oklch(30.00% 0.0000 0.00deg);
+        --fg: oklch(30% 0 0);
         --muted: oklch(46% 0 0);
         --selection: oklch(76% 0.085 240);
         --sky-top: #cce4f6;
         --sky-bottom: #9eccea;
-        color-scheme: light dark;
-      }
+        --scheme-surface: rgb(255 255 255 / 0.15);
+        --scheme-surface-hover: rgb(255 255 255 / 0.22);
+        color-scheme: light;
 
-      @media (prefers-color-scheme: dark) {
-        :root {
+        &[data-scheme="dark"] {
           --fg: oklch(93% 0.01 148);
           --muted: oklch(68% 0.02 148);
           --selection: oklch(45% 0.056 240);
           --sky-top: #0f1720;
           --sky-bottom: #131d26;
+          --scheme-surface: rgb(0 0 0 / 0.45);
+          --scheme-surface-hover: rgb(0 0 0 / 0.55);
+          color-scheme: dark;
+        }
+
+        &[data-scheme="sunset"] {
+          --fg: oklch(94% 0.02 75);
+          --muted: oklch(86% 0.025 75);
+          --selection: oklch(50% 0.11 45);
+          --sky-top: #526c8b;
+          --sky-bottom: #354860;
+          --scheme-surface: rgb(0 0 0 / 0.45);
+          --scheme-surface-hover: rgb(0 0 0 / 0.55);
+          color-scheme: dark;
+        }
+
+        @media (prefers-color-scheme: dark) {
+          &:not([data-scheme]) {
+            --fg: oklch(93% 0.01 148);
+            --muted: oklch(68% 0.02 148);
+            --selection: oklch(45% 0.056 240);
+            --sky-top: #0f1720;
+            --sky-bottom: #131d26;
+            color-scheme: dark;
+          }
         }
       }
 
@@ -87,12 +131,20 @@
         margin: 0;
       }
 
+      ::selection {
+        background: var(--selection);
+        color: var(--fg);
+      }
+
       body {
-        position: relative;
+        height: 100%;
         height: 100dvh;
-        padding: clamp(2.75rem, 6vw, 4.5rem) clamp(1.5rem, 6vw, 4.5rem) clamp(5.5rem, 12vw, 9rem);
-        background-color: var(--sky-top);
-        background-image: linear-gradient(var(--sky-top), var(--sky-bottom));
+        padding:
+          max(clamp(2.75rem, 6vw, 4.5rem), env(safe-area-inset-top))
+          max(clamp(1.5rem, 6vw, 4.5rem), env(safe-area-inset-right))
+          max(clamp(5.5rem, 12vw, 9rem), env(safe-area-inset-bottom))
+          max(clamp(1.5rem, 6vw, 4.5rem), env(safe-area-inset-left));
+        background: linear-gradient(var(--sky-top), var(--sky-bottom)) var(--sky-top);
         color: var(--fg);
         font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         line-height: 1.5;
@@ -122,18 +174,19 @@
         transition:
           filter 5s cubic-bezier(0.45, 0.05, 0.25, 1),
           transform 5s cubic-bezier(0.45, 0.05, 0.25, 1);
-      }
-      #sky.sharp {
-        filter: blur(0);
-        transform: scale(1);
-      }
 
-      @media (prefers-reduced-motion: reduce) {
-        #sky,
-        #sky.sharp {
-          filter: none;
-          transform: none;
-          transition: none;
+        &.sharp {
+          filter: blur(0);
+          transform: scale(1);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          &,
+          &.sharp {
+            filter: none;
+            transform: none;
+            transition: none;
+          }
         }
       }
 
@@ -161,15 +214,16 @@
         text-decoration-thickness: 1px;
         text-underline-offset: 0.125rem;
         text-decoration-color: color-mix(in srgb, currentColor 50%, transparent);
-      }
-      a:hover {
-        color: var(--fg);
-        text-decoration-color: var(--fg);
+
+        &:hover {
+          color: var(--fg);
+          text-decoration-color: var(--fg);
+        }
       }
 
       :focus-visible {
         outline: 2px solid var(--fg);
-        outline-offset: 3px;
+        outline-offset: 2px;
         border-radius: 2px;
       }
 
@@ -179,6 +233,60 @@
         color: var(--muted);
       }
 
+      .scheme {
+        position: fixed;
+        bottom: max(1rem, env(safe-area-inset-bottom));
+        right: max(1rem, env(safe-area-inset-right));
+        z-index: 1;
+        border: 0;
+        font: inherit;
+        color: var(--fg);
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        display: grid;
+        width: 2.5rem;
+        height: 2.5rem;
+        padding: 0;
+        place-items: center;
+        border-radius: 999px;
+        background: var(--scheme-surface);
+
+        &[hidden] {
+          display: none;
+        }
+
+        @media (hover: hover) {
+          &:hover {
+            background-blend-mode: screen;
+            background:
+              radial-gradient(circle at 28% 18%, rgb(255 255 255 / 0.3), transparent 48%)
+              var(--scheme-surface-hover);
+            -webkit-backdrop-filter: blur(8px) saturate(1.3) brightness(1.05);
+            backdrop-filter: blur(8px) saturate(1.3) brightness(1.05);
+          }
+        }
+
+        &:active {
+          scale: 0.96;
+        }
+
+        & svg {
+          display: none;
+          width: 1rem;
+          height: 1rem;
+          fill: none;
+          stroke: currentColor;
+          stroke-width: 1.75;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+
+          :root[data-scheme=light] &[data-scheme=light],
+          :root[data-scheme=dark] &[data-scheme=dark],
+          :root[data-scheme=sunset] &[data-scheme=sunset] {
+            display: block;
+          }
+        }
+      }
       .sr-only {
         position: absolute;
         width: 1px;
@@ -189,11 +297,6 @@
         clip-path: inset(50%);
         white-space: nowrap;
         border: 0;
-      }
-
-      ::selection {
-        background: var(--selection);
-        color: var(--fg);
       }
     </style>
   </head>
@@ -211,8 +314,62 @@
         <a href="https://www.linkedin.com/in/aarongarciah" rel="me noopener">in<span class="sr-only">, LinkedIn</span></a>
       </nav>
     </main>
+    <button
+      id="scheme"
+      class="scheme"
+      type="button"
+      hidden
+      aria-label="Choose color scheme"
+      aria-describedby="scheme-help"
+    >
+      <svg data-scheme="light" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="3.5" />
+        <path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.31 11.31 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41" />
+      </svg>
+      <svg data-scheme="dark" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M20 15.1A8 8 0 0 1 8.9 4 8 8 0 1 0 20 15.1Z" />
+      </svg>
+      <svg data-scheme="sunset" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 18h16M6 14h12M8 14a4 4 0 0 1 8 0M12 4v3M5.64 7.64l2.12 2.12M18.36 7.64l-2.12 2.12" />
+      </svg>
+    </button>
+    <span id="scheme-help" class="sr-only" hidden>Cycles through Light, Dark, and Sunset.</span>
     <script>
       (() => {
+        const root = document.documentElement;
+        const schemes = ["light", "dark", "sunset"];
+        const labels = { light: "Light", dark: "Dark", sunset: "Sunset" };
+        const themeColors = { light: "#cce4f6", dark: "#0f1720", sunset: "#526c8b" };
+        const systemDark = matchMedia("(prefers-color-scheme: dark)");
+        const trigger = document.getElementById("scheme");
+        const help = document.getElementById("scheme-help");
+
+        const nextScheme = (scheme) => schemes[(schemes.indexOf(scheme) + 1) % schemes.length];
+
+        function applyScheme(scheme, persist = false) {
+          if (!schemes.includes(scheme)) scheme = "light";
+          const next = nextScheme(scheme);
+          root.dataset.scheme = scheme;
+          document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+            meta.content = themeColors[scheme];
+          });
+          trigger.setAttribute("aria-label", `Color scheme: ${labels[scheme]}. Activate for ${labels[next]}.`);
+          trigger.title = `${labels[scheme]} → ${labels[next]}`;
+          if (persist) {
+            try { localStorage.setItem("color-scheme", scheme); } catch {}
+          }
+          root.dispatchEvent(new Event("schemechange"));
+        }
+        trigger.addEventListener("click", () => applyScheme(nextScheme(root.dataset.scheme), true));
+        systemDark.addEventListener("change", (event) => {
+          let hasSavedScheme = false;
+          try { hasSavedScheme = schemes.includes(localStorage.getItem("color-scheme")); } catch {}
+          if (!hasSavedScheme) applyScheme(event.matches ? "dark" : "light");
+        });
+        applyScheme(root.dataset.scheme);
+        trigger.hidden = false;
+        help.hidden = false;
+
         const cv = document.getElementById("sky");
         const gl =
           cv &&
@@ -299,17 +456,18 @@ void main(){
         const RAMP = {
           light: [[74, 150, 208], [125, 186, 226], [173, 214, 240], [216, 234, 248], [252, 252, 252]],
           dark: [[8, 13, 8], [16, 25, 34], [27, 42, 56], [50, 74, 96], [84, 116, 144]],
+          sunset: [[39, 49, 70], [53, 67, 91], [68, 86, 112], [182, 112, 81], [218, 168, 116]],
         };
 
-        const dark = matchMedia("(prefers-color-scheme: dark)");
         const still = matchMedia("(prefers-reduced-motion: reduce)");
         let W = 0, H = 0;
         function setRamp() {
-          const r = RAMP[dark.matches ? "dark" : "light"];
+          const scheme = schemes.includes(root.dataset.scheme) ? root.dataset.scheme : "light";
+          const r = RAMP[scheme];
           ["c0", "c1", "c2", "c3", "c4"].forEach((n, i) =>
             gl.uniform3f(U(n), r[i][0] / 255, r[i][1] / 255, r[i][2] / 255),
           );
-          gl.uniform1f(uDark, dark.matches ? 1 : 0);
+          gl.uniform1f(uDark, scheme === "light" ? 0 : 1);
         }
         // The glow is anchored to the text's real box, not to viewport proportions.
         // The clouds drift, so anywhere the glow misses will sooner or later have deep
@@ -357,7 +515,7 @@ void main(){
         }
         addEventListener("resize", start);
         document.addEventListener("visibilitychange", start);
-        dark.addEventListener("change", start);
+        root.addEventListener("schemechange", start);
         still.addEventListener("change", start);
         cv.addEventListener("webglcontextlost", (e) => { e.preventDefault(); cancelAnimationFrame(raf); });
         cv.addEventListener("webglcontextrestored", start);
