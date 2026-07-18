@@ -339,14 +339,21 @@
     <script>
       (() => {
         const root = document.documentElement;
+        const consoleColors = {
+          light: ["#cce4f6", "oklch(30% 0 0)", "oklch(46% 0 0)"],
+          dark: ["#0f1720", "oklch(93% 0.01 148)", "oklch(68% 0.02 148)"],
+          sunset: ["#526c8b", "oklch(94% 0.02 75)", "oklch(86% 0.025 75)"],
+        };
+        const [consoleBackground, consoleForeground, consoleMuted] =
+          consoleColors[root.dataset.scheme] ?? consoleColors.light;
         console.log(
           "%c I see what you did there.                             \n" +
             " → https://aaron-garcia-cv.netlify.app                 \n" +
             "                                                       \n" +
             "%c Cheers,                                               \n" +
             " Aarón                                                 ",
-          "background:#cce4f6;color:#2e2e2e;-webkit-text-fill-color:#2e2e2e;line-height:1.4;padding:4px 0",
-          "background:#cce4f6;color:#585858;-webkit-text-fill-color:#585858;line-height:1.4;padding:4px 0",
+          `background:${consoleBackground};color:${consoleForeground};-webkit-text-fill-color:${consoleForeground};line-height:1.4;padding:4px 0`,
+          `background:${consoleBackground};color:${consoleMuted};-webkit-text-fill-color:${consoleMuted};line-height:1.4;padding:4px 0`,
         );
 
         const schemes = ["light", "dark", "sunset"];
