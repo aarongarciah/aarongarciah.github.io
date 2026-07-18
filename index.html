@@ -339,24 +339,14 @@
     <script>
       (() => {
         const root = document.documentElement;
-        const rootStyle = getComputedStyle(root);
-        const skyTop = rootStyle.getPropertyValue("--sky-top").trim();
-        const foreground = rootStyle.getPropertyValue("--fg").trim();
-        const muted = rootStyle.getPropertyValue("--muted").trim();
-        const consoleLines = [
-          " I see what you did there.",
-          " → https://aaron-garcia-cv.netlify.app",
-          "",
-          " Cheers,",
-          " Aarón",
-        ];
-        const consoleWidth = Math.max(...consoleLines.map((line) => line.length)) + 2;
-        const consoleLine = (line) => line.padEnd(consoleWidth);
         console.log(
-          `%c${consoleLines.slice(0, 3).map(consoleLine).join("\n")}\n` +
-            `%c${consoleLines.slice(3).map(consoleLine).join("\n")}`,
-          `background: ${skyTop}; color: ${foreground}; -webkit-text-fill-color: ${foreground}; line-height: 1.4; padding: 4px 0`,
-          `background: ${skyTop}; color: ${muted}; -webkit-text-fill-color: ${muted}; line-height: 1.4; padding: 4px 0`,
+          "%c I see what you did there.                             \n" +
+            " → https://aaron-garcia-cv.netlify.app                 \n" +
+            "                                                       \n" +
+            "%c Cheers,                                               \n" +
+            " Aarón                                                 ",
+          "background:#cce4f6;color:#2e2e2e;-webkit-text-fill-color:#2e2e2e;line-height:1.4;padding:4px 0",
+          "background:#cce4f6;color:#585858;-webkit-text-fill-color:#585858;line-height:1.4;padding:4px 0",
         );
 
         const schemes = ["light", "dark", "sunset"];
