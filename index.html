@@ -340,18 +340,30 @@
       (() => {
         const root = document.documentElement;
         const consoleColors = {
-          light: ["#cce4f6", "oklch(30% 0 0)", "oklch(46% 0 0)"],
-          dark: ["#0f1720", "oklch(93% 0.01 148)", "oklch(68% 0.02 148)"],
-          sunset: ["#354860", "oklch(94% 0.02 75)", "oklch(86% 0.025 75)"],
+          light: [
+            "#cce4f6",
+            "oklch(30% 0 0)",
+            "oklch(46% 0 0)",
+          ],
+          dark: [
+            "#0f1720",
+            "oklch(93% 0.01 148)",
+            "oklch(68% 0.02 148)",
+          ],
+          sunset: [
+            "#354860",
+            "oklch(94% 0.02 75)",
+            "oklch(86% 0.025 75)",
+          ],
         };
         const [consoleBackground, consoleForeground, consoleMuted] =
           consoleColors[root.dataset.scheme] ?? consoleColors.light;
         console.log(
-          "%c I see what you did there.             \n" +
-            " → https://aaron-garcia-cv.netlify.app \n" +
-            "                                       \n" +
-            "%c Cheers,                               \n" +
-            " Aarón                                 ",
+          "%c I see what you did there.                             \n" +
+            " → https://aaron-garcia-cv.netlify.app                 \n" +
+            "                                                       \n" +
+            "%c Cheers,                                               \n" +
+            " Aarón                                                 ",
           `background:${consoleBackground};color:${consoleForeground};-webkit-text-fill-color:${consoleForeground};line-height:1.4;padding:4px 0`,
           `background:${consoleBackground};color:${consoleMuted};-webkit-text-fill-color:${consoleMuted};line-height:1.4;padding:4px 0`,
         );
