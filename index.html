@@ -8,16 +8,16 @@
     <meta name="theme-color" content="#0f1720" media="(prefers-color-scheme: dark)" />
     <script>
       (() => {
-        const schemes = ["light", "dark", "sunset"];
-        let scheme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        const schemes = ["day", "night", "sunset"];
+        let scheme = matchMedia("(prefers-color-scheme: dark)").matches ? "night" : "day";
         try {
           const saved = localStorage.getItem("color-scheme");
           if (schemes.includes(saved)) scheme = saved;
         } catch {}
         document.documentElement.dataset.scheme = scheme;
         const themeColor = {
-          light: "#cce4f6",
-          dark: "#0f1720",
+          day: "#cce4f6",
+          night: "#0f1720",
           sunset: "#526c8b",
         }[scheme];
         document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
@@ -92,7 +92,7 @@
         --scheme-surface-hover: oklch(100% 0 0 / 0.58);
         color-scheme: light;
 
-        &[data-scheme="dark"] {
+        &[data-scheme="night"] {
           --fg: oklch(93% 0.01 148);
           --muted: oklch(68% 0.02 148);
           --selection: oklch(45% 0.056 240);
@@ -282,8 +282,8 @@
           stroke-linecap: round;
           stroke-linejoin: round;
 
-          :root[data-scheme=light] &[data-scheme=light],
-          :root[data-scheme=dark] &[data-scheme=dark],
+          :root[data-scheme=day] &[data-scheme=day],
+          :root[data-scheme=night] &[data-scheme=night],
           :root[data-scheme=sunset] &[data-scheme=sunset] {
             display: block;
           }
@@ -324,28 +324,28 @@
       aria-label="Choose color scheme"
       aria-describedby="scheme-help"
     >
-      <svg data-scheme="light" viewBox="0 0 24 24" aria-hidden="true">
+      <svg data-scheme="day" viewBox="0 0 24 24" aria-hidden="true">
         <circle cx="12" cy="12" r="3.5" />
         <path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.31 11.31 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41" />
       </svg>
-      <svg data-scheme="dark" viewBox="0 0 24 24" aria-hidden="true">
+      <svg data-scheme="night" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M20 15.1A8 8 0 0 1 8.9 4 8 8 0 1 0 20 15.1Z" />
       </svg>
       <svg data-scheme="sunset" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M4 18h16M6 14h12M8 14a4 4 0 0 1 8 0M12 4v3M5.64 7.64l2.12 2.12M18.36 7.64l-2.12 2.12" />
       </svg>
     </button>
-    <span id="scheme-help" class="sr-only" hidden>Cycles through Light, Dark, and Sunset.</span>
+    <span id="scheme-help" class="sr-only" hidden>Cycles through Day, Night, and Sunset.</span>
     <script>
       (() => {
         const root = document.documentElement;
         const consoleColors = {
-          light: [
+          day: [
             "oklch(90.676% 0.036 240.298)",
             "oklch(30% 0 0)",
             "oklch(46% 0 0)",
           ],
-          dark: [
+          night: [
             "oklch(20.121% 0.022 251.836)",
             "oklch(93% 0.01 148)",
             "oklch(68% 0.02 148)",
@@ -357,7 +357,7 @@
           ],
         };
         const [consoleBackground, consoleForeground, consoleMuted] =
-          consoleColors[root.dataset.scheme] ?? consoleColors.light;
+          consoleColors[root.dataset.scheme] ?? consoleColors.day;
         console.log(
           "%c I see what you did there.                             \n" +
             " → https://aaron-garcia-cv.netlify.app                 \n" +
@@ -368,17 +368,17 @@
           `background:${consoleBackground};color:${consoleMuted};-webkit-text-fill-color:${consoleMuted};line-height:1.4;padding:4px 0`,
         );
 
-        const schemes = ["light", "dark", "sunset"];
-        const labels = { light: "Light", dark: "Dark", sunset: "Sunset" };
-        const themeColors = { light: "#cce4f6", dark: "#0f1720", sunset: "#526c8b" };
-        const systemDark = matchMedia("(prefers-color-scheme: dark)");
+        const schemes = ["day", "night", "sunset"];
+        const labels = { day: "Day", night: "Night", sunset: "Sunset" };
+        const themeColors = { day: "#cce4f6", night: "#0f1720", sunset: "#526c8b" };
+        const systemPreference = matchMedia("(prefers-color-scheme: dark)");
         const trigger = document.getElementById("scheme");
         const help = document.getElementById("scheme-help");
 
         const nextScheme = (scheme) => schemes[(schemes.indexOf(scheme) + 1) % schemes.length];
 
         function applyScheme(scheme, persist = false) {
-          if (!schemes.includes(scheme)) scheme = "light";
+          if (!schemes.includes(scheme)) scheme = "day";
           const next = nextScheme(scheme);
           root.dataset.scheme = scheme;
           document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
@@ -392,10 +392,10 @@
           root.dispatchEvent(new Event("schemechange"));
         }
         trigger.addEventListener("click", () => applyScheme(nextScheme(root.dataset.scheme), true));
-        systemDark.addEventListener("change", (event) => {
+        systemPreference.addEventListener("change", (event) => {
           let hasSavedScheme = false;
           try { hasSavedScheme = schemes.includes(localStorage.getItem("color-scheme")); } catch {}
-          if (!hasSavedScheme) applyScheme(event.matches ? "dark" : "light");
+          if (!hasSavedScheme) applyScheme(event.matches ? "night" : "day");
         });
         applyScheme(root.dataset.scheme);
         trigger.hidden = false;
@@ -415,7 +415,7 @@
         const PX = 3; // CSS px per dithered cell
         const VS = `attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}`;
         const FS = `precision highp float;
-uniform vec2 uRes;uniform float uTime,uFall,uDark;uniform vec4 uCore;
+uniform vec2 uRes;uniform float uTime,uFall,uReverse;uniform vec4 uCore;
 uniform vec3 c0,c1,c2,c3,c4;
 float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.-2.*f);
@@ -436,7 +436,7 @@ void main(){
   // clamp, don't overwrite: the sky is only stopped from going deep where the text
   // sits, so clouds keep drifting through it and the worst-case pixel behind the
   // type is pinned to a known ramp step at every frame and every viewport.
-  v=mix(max(v,.5*g),min(v,1.-.55*g),uDark);
+  v=mix(max(v,.5*g),min(v,1.-.55*g),uReverse);
   v=clamp(v,0.,1.);
   // step() is >=, so a zero threshold rounds *up*: the reachable index is
   // floor(v*4)+1, not floor(v*4). The glow's clamps are chosen to keep v off the
@@ -483,22 +483,22 @@ void main(){
         gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
 
         const U = (n) => gl.getUniformLocation(prog, n);
-        const uRes = U("uRes"), uTime = U("uTime"), uFall = U("uFall"), uDark = U("uDark"), uCore = U("uCore");
+        const uRes = U("uRes"), uTime = U("uTime"), uFall = U("uFall"), uReverse = U("uReverse"), uCore = U("uCore");
         const RAMP = {
-          light: [[74, 150, 208], [125, 186, 226], [173, 214, 240], [216, 234, 248], [252, 252, 252]],
-          dark: [[8, 13, 8], [16, 25, 34], [27, 42, 56], [50, 74, 96], [84, 116, 144]],
+          day: [[74, 150, 208], [125, 186, 226], [173, 214, 240], [216, 234, 248], [252, 252, 252]],
+          night: [[8, 13, 8], [16, 25, 34], [27, 42, 56], [50, 74, 96], [84, 116, 144]],
           sunset: [[39, 49, 70], [53, 67, 91], [68, 86, 112], [182, 112, 81], [218, 168, 116]],
         };
 
         const still = matchMedia("(prefers-reduced-motion: reduce)");
         let W = 0, H = 0;
         function setRamp() {
-          const scheme = schemes.includes(root.dataset.scheme) ? root.dataset.scheme : "light";
+          const scheme = schemes.includes(root.dataset.scheme) ? root.dataset.scheme : "day";
           const r = RAMP[scheme];
           ["c0", "c1", "c2", "c3", "c4"].forEach((n, i) =>
             gl.uniform3f(U(n), r[i][0] / 255, r[i][1] / 255, r[i][2] / 255),
           );
-          gl.uniform1f(uDark, scheme === "light" ? 0 : 1);
+          gl.uniform1f(uReverse, scheme === "day" ? 0 : 1);
         }
         // The glow is anchored to the text's real box, not to viewport proportions.
         // The clouds drift, so anywhere the glow misses will sooner or later have deep
