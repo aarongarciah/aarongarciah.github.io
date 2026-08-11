@@ -10,7 +10,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Aarón García Hervás — Design Engineer</title>
     <meta
       name="description"
@@ -112,6 +112,8 @@
         color: inherit;
         text-decoration: none;
         transition: color 150ms ease, text-decoration-color 150ms ease;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
       }
 
       @media (hover: hover) and (pointer: fine) {
@@ -330,7 +332,13 @@
           max-width: none;
           border-radius: 0;
           box-shadow: none;
-          padding: 40px 48px;
+          /* Edge-to-edge with viewport-fit=cover: keep content clear of the
+             notch in landscape and the home indicator at the bottom. */
+          padding:
+            40px
+            max(48px, env(safe-area-inset-right))
+            max(40px, env(safe-area-inset-bottom))
+            max(48px, env(safe-area-inset-left));
         }
 
         h1 {
@@ -345,7 +353,11 @@
 
       @media (max-width: 640px) {
         .sheet {
-          padding: 24px 22px;
+          padding:
+            24px
+            max(22px, env(safe-area-inset-right))
+            max(24px, env(safe-area-inset-bottom))
+            max(22px, env(safe-area-inset-left));
         }
       }
 

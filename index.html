@@ -133,6 +133,13 @@
         margin: 0;
       }
 
+      /* Nothing scrolls, so rubber-banding and pull-to-refresh only ever
+         expose the area behind the sky. */
+      html,
+      body {
+        overscroll-behavior: none;
+      }
+
       ::selection {
         background: var(--selection);
         color: var(--fg);
@@ -216,10 +223,14 @@
         text-decoration-thickness: 1px;
         text-underline-offset: 0.125rem;
         text-decoration-color: color-mix(in srgb, currentColor 50%, transparent);
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
 
-        &:hover {
-          color: var(--fg);
-          text-decoration-color: var(--fg);
+        @media (hover: hover) {
+          &:hover {
+            color: var(--fg);
+            text-decoration-color: var(--fg);
+          }
         }
       }
 
@@ -245,6 +256,9 @@
         color: var(--fg);
         cursor: pointer;
         -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+        -webkit-user-select: none;
+        user-select: none;
         display: grid;
         width: 2.5rem;
         height: 2.5rem;
