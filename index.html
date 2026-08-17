@@ -171,11 +171,20 @@
         width: 100%;
         height: 100%;
         image-rendering: pixelated;
-        filter: blur(36px);
-        transform: scale(1.12);
+        filter: blur(26px);
+        transform: scale(1.08);
+        /* Front-loaded on purpose. An ease-in-out here barely moved for its first
+           second — a few px off a blur this heavy is indistinguishable on a soft
+           gradient — so the sky only started visibly resolving after the type had
+           already finished, and the two read as separate events with a gap between
+           them. This curve is perceptibly moving within ~300ms, under the tail of
+           the text cascade, and it spends most of its length at the far end of the
+           ramp: below about 4px is where the dither texture actually materialises,
+           and that is the part worth dwelling on. The type uses this same curve, so
+           the two are one gesture running at two speeds. */
         transition:
-          filter 5s cubic-bezier(0.45, 0.05, 0.25, 1),
-          transform 5s cubic-bezier(0.45, 0.05, 0.25, 1);
+          filter 4s cubic-bezier(0.33, 0.7, 0.2, 1),
+          transform 4s cubic-bezier(0.33, 0.7, 0.2, 1);
 
         &.sharp {
           filter: blur(0);
@@ -199,6 +208,56 @@
         justify-content: center;
         align-items: center;
         min-height: 100%;
+      }
+
+      /* The type resolves out of softness exactly the way the sky does — same
+         curve, no travel — just several times faster, so the words are readable
+         long before the world behind them settles. Deliberately no translate: a
+         lift would be a second, unrelated idea, and the whole point is that the
+         page is one optical event happening in two layers at two speeds.
+
+         `backwards` and not `both`: the fill is only needed before the animation
+         starts. Letting it stick would leave a permanent blur(0) filter on live
+         text, which costs a paint pass and forces the glyphs off subpixel
+         antialiasing for the rest of the session. */
+      @keyframes intro {
+        from {
+          opacity: 0;
+          filter: blur(14px);
+        }
+      }
+
+      @keyframes intro-fade {
+        from {
+          opacity: 0;
+        }
+      }
+
+      main > * {
+        animation: intro 0.9s cubic-bezier(0.33, 0.7, 0.2, 1) backwards;
+        animation-delay: calc(80ms + var(--index) * 110ms);
+      }
+      h1 {
+        --index: 0;
+      }
+      main > p {
+        --index: 1;
+      }
+      nav {
+        --index: 2;
+      }
+
+      /* Unhidden by JS, so its animation starts whenever that runs rather than at
+         load — the delay is short to keep it near the end of the same cascade. */
+      .scheme {
+        animation: intro-fade 0.5s ease-out 0.3s backwards;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        main > *,
+        .scheme {
+          animation-name: intro-fade;
+        }
       }
 
       h1 {
@@ -567,9 +626,15 @@ void main(){
         // every frame of a full-screen canvas that never stops redrawing.
         cv.addEventListener("transitionend", (e) => {
           if (e.propertyName !== "filter") return;
+          // Disarm the transition before clearing, or these assignments are
+          // themselves transitioned: blur(0) -> none is an animatable change, so
+          // the filter pass this is meant to retire would linger for the whole
+          // duration all over again. Nothing transitions the canvas after the
+          // intro, so dropping the declaration outright is safe.
+          cv.style.transition = "none";
           cv.style.filter = "none";
           cv.style.transform = "none";
-        });
+        }, { once: true });
       })();
     </script>
   </body>
