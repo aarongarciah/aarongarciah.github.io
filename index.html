@@ -133,6 +133,21 @@
         margin: 0;
       }
 
+      /* Nothing here scrolls, so rubber-banding and pull-to-refresh only ever
+         expose the area behind the sky. */
+      html,
+      body {
+        overscroll-behavior-y: none;
+
+        /* The x axis is held back to pointer devices: a sideways trackpad flick
+           bounces the page here for no reason, while on touch the same axis is
+           the platform's own edge-swipe back gesture and taking it out would
+           cost more than the bounce does. */
+        @media (hover: hover) and (pointer: fine) {
+          overscroll-behavior-x: none;
+        }
+      }
+
       ::selection {
         background: var(--selection);
         color: var(--fg);
