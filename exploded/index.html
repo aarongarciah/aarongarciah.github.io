@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="light dark" />
     <!-- A sketch, not a page. Keep it out of search until it graduates. -->
     <meta name="robots" content="noindex" />
-    <title>Exploded views — sketch</title>
+    <title>Exploded view — sketch</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 
     <style>
@@ -53,6 +53,13 @@
       html {
         background: var(--paper);
         color: var(--ink);
+        /* The page loops (see the script), so a scrollbar would only show its
+           thumb teleporting. Hide it; wheel, touch and keys still scroll. */
+        scrollbar-width: none;
+      }
+
+      html::-webkit-scrollbar {
+        display: none;
       }
 
       body {
@@ -62,7 +69,7 @@
         letter-spacing: 0.08em;
         text-transform: uppercase;
         /* The faint dot grid of a drafting sheet. Fixed so it reads as the
-           paper under the drawings, not something that scrolls with them. */
+           paper under the drawing, not something that scrolls past. */
         background-image: radial-gradient(var(--dot) 1px, transparent 1.2px);
         background-size: 8px 8px;
         background-attachment: fixed;
@@ -73,25 +80,67 @@
         color: inherit;
       }
 
-      header {
+      header,
+      .hud {
         position: fixed;
-        inset: 0 0 auto 0;
+        left: 0;
+        right: 0;
         z-index: 1;
         display: flex;
         justify-content: space-between;
         align-items: center;
         gap: 16px;
-        padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 16px
-          max(16px, env(safe-area-inset-left));
+        padding-inline: max(16px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-right));
         pointer-events: none;
       }
 
-      header > * {
+      header {
+        top: 0;
+        padding-top: max(16px, env(safe-area-inset-top));
+      }
+
+      .hud {
+        bottom: 0;
+        align-items: flex-end;
+        padding-bottom: max(20px, env(safe-area-inset-bottom));
+      }
+
+      header > *,
+      .hud > * {
         pointer-events: auto;
       }
 
       header a {
         text-decoration: none;
+      }
+
+      .hud span {
+        color: var(--ink-soft);
+      }
+
+      .caption {
+        display: grid;
+        gap: 4px;
+      }
+
+      .readout {
+        text-align: right;
+        display: grid;
+        gap: 4px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .hint {
+        position: fixed;
+        left: 50%;
+        bottom: max(20px, env(safe-area-inset-bottom));
+        translate: -50% 0;
+        color: var(--ink-soft);
+        transition: opacity 600ms;
+      }
+
+      .hint.gone {
+        opacity: 0;
       }
 
       .sound {
@@ -129,58 +178,14 @@
         background: currentColor;
       }
 
-      .intro {
-        min-height: 100svh;
-        display: grid;
-        place-content: center;
-        text-align: center;
-        gap: 12px;
-        padding: 16px;
-      }
-
-      .intro h1 {
-        margin: 0;
-        font-size: 14px;
-        font-weight: 500;
-        letter-spacing: 0.2em;
-      }
-
-      .intro p {
-        margin: 0;
-        color: var(--ink-soft);
-      }
-
-      .fig {
-        position: relative;
-        min-height: 110svh;
-        display: grid;
-        place-items: center;
-      }
-
-      .fig svg {
+      /* The drawing never moves; the page scrolls underneath it, and only
+         the scroll position is used. */
+      .stage {
+        position: fixed;
+        inset: 0;
         display: block;
-        width: min(100vw, 960px);
-        height: 92svh;
-        overflow: visible;
-      }
-
-      .fig figcaption {
-        position: absolute;
-        left: max(16px, env(safe-area-inset-left));
-        bottom: 24px;
-        display: grid;
-        gap: 4px;
-      }
-
-      .fig figcaption span {
-        color: var(--ink-soft);
-      }
-
-      footer {
-        min-height: 50svh;
-        display: grid;
-        place-content: center;
-        color: var(--ink-soft);
+        width: 100%;
+        height: 100%;
       }
 
       /* SVG classes. Strokes are non-scaling so the line weight stays a crisp
@@ -231,6 +236,8 @@
   </head>
 
   <body>
+    <svg class="stage" role="img"></svg>
+
     <header>
       <a href="/">Aarón García Hervás</a>
       <button class="sound" type="button" aria-pressed="false">
@@ -239,17 +246,14 @@
       </button>
     </header>
 
-    <main>
-      <section class="intro">
-        <h1>Exploded views</h1>
-        <p>Scroll to take things apart. Stop, and they fall back together.</p>
-      </section>
-      <!-- Figures are rendered from the definitions in the script below. -->
-    </main>
+    <div class="hud">
+      <div class="caption"></div>
+      <div class="readout" aria-hidden="true"><span class="stage-name"></span><span class="angle"></span></div>
+    </div>
+    <p class="hint">Scroll</p>
 
-    <footer>
-      <p>End of sheet · <a href="/">Back home</a></p>
-    </footer>
+    <!-- Only here to give the page something to scroll. -->
+    <div class="track"></div>
 
     <script>
       (() => {
@@ -258,15 +262,21 @@
         /*
           Isometric projection. World space is z-up; screen space is SVG's
           y-down. A point further along +x or +y comes towards the viewer and
-          slides down the screen, so for every solid the visible faces are the
-          top (+z), the +x side and the +y side. That fact lets every primitive
-          below draw just three faces with no depth sorting inside a part.
+          slides down the screen. The whole figure can spin about its vertical
+          axis by `theta`, applied in local x/y before projecting.
         */
         const C30 = Math.cos(Math.PI / 6);
         const S30 = 0.5;
-        const P = (x, y, z) => [(x - y) * C30, (x + y) * S30 - z];
+        let cosT = 1;
+        let sinT = 0;
+        const R = (x, y) => [x * cosT - y * sinT, x * sinT + y * cosT];
+        const P = (x, y, z) => {
+          const [rx, ry] = R(x, y);
+          return [(rx - ry) * C30, (rx + ry) * S30 - z];
+        };
         // A circle of radius r on a horizontal plane projects to an
-        // axis-aligned ellipse. sqrt(2) comes from the 45° rotation of iso.
+        // axis-aligned ellipse whatever the spin. sqrt(2) comes from the 45°
+        // rotation of iso.
         const RX = Math.SQRT2 * C30;
         const RY = Math.SQRT2 * S30;
 
@@ -274,8 +284,21 @@
         const pts = (list) => list.map(([x, y]) => `${f(x)},${f(y)}`).join(" ");
         const poly = (list, cls) => `<polygon class="s ${cls}" points="${pts(list)}"/>`;
 
+        // How much a local face normal points at the viewer, who looks along
+        // -(1, 1) in rotated world x/y. Positive means visible.
+        const facing = (nx, ny) => {
+          const [wx, wy] = R(nx, ny);
+          return wx + wy;
+        };
+        // Faces turned to the screen's right get one shade, left the other,
+        // which keeps a consistent "light from the upper left" while spinning.
+        const shade = (nx, ny) => {
+          const [wx, wy] = R(nx, ny);
+          return wx - wy > 0 ? "fx" : "fy";
+        };
+
         // Top-face decorations, in the part's local x/y on its top plane.
-        function details(list, z, ox, oy, accent) {
+        function details(list, z, ox, oy) {
           return (list || [])
             .map((d) => {
               const cls = d.fill || "none";
@@ -296,37 +319,62 @@
             .join("");
         }
 
-        /*
-          Each primitive returns its SVG and the two points labels and guides
-          hook onto: the left-most and right-most silhouette points at
-          mid-height. Those are exactly where a draughtsperson would hang a
-          leader line or drop an assembly guide.
-        */
+        // Left-most and right-most of some projected points, which is where
+        // leader lines and assembly guides hook onto a part.
+        const extremes = (list) =>
+          list.reduce(
+            (acc, p) => ({
+              left: p[0] < acc.left[0] ? p : acc.left,
+              right: p[0] > acc.right[0] ? p : acc.right,
+            }),
+            { left: list[0], right: list[0] },
+          );
+
         const shapes = {
-          // An axis-aligned box. `inset` pulls the top face in to make a
-          // frustum, which is all a keycap really is.
+          // A box, optionally a frustum (`inset` pulls the top face in, which
+          // is all a keycap really is). Of its four sides only the ones facing
+          // the viewer are drawn; a convex solid never overlaps itself, so
+          // they need no sorting among themselves.
           box(p, o) {
             const [x0, x1] = [p.x[0] + o[0], p.x[1] + o[0]];
             const [y0, y1] = [p.y[0] + o[1], p.y[1] + o[1]];
             const [z0, z1] = [p.z[0] + o[2], p.z[1] + o[2]];
             const d = p.inset || 0;
             const a = p.accent ? "a " : "";
-            const svg =
-              poly(
-                [P(x1, y0, z0), P(x1, y1, z0), P(x1 - d, y1 - d, z1), P(x1 - d, y0 + d, z1)],
-                a + "fx",
-              ) +
-              poly(
-                [P(x0, y1, z0), P(x1, y1, z0), P(x1 - d, y1 - d, z1), P(x0 + d, y1 - d, z1)],
-                a + "fy",
-              ) +
-              poly(
-                [P(x0 + d, y0 + d, z1), P(x1 - d, y0 + d, z1), P(x1 - d, y1 - d, z1), P(x0 + d, y1 - d, z1)],
-                a + "top",
-              ) +
-              details(p.details, z1, o[0], o[1]);
+            const B = [
+              [x0, y0],
+              [x1, y0],
+              [x1, y1],
+              [x0, y1],
+            ];
+            const T = [
+              [x0 + d, y0 + d],
+              [x1 - d, y0 + d],
+              [x1 - d, y1 - d],
+              [x0 + d, y1 - d],
+            ];
+            const normals = [
+              [0, -1],
+              [1, 0],
+              [0, 1],
+              [-1, 0],
+            ];
+            let svg = "";
+            normals.forEach(([nx, ny], i) => {
+              if (facing(nx, ny) <= 1e-6) return;
+              const j = (i + 1) % 4;
+              svg += poly(
+                [P(...B[i], z0), P(...B[j], z0), P(...T[j], z1), P(...T[i], z1)],
+                a + shade(nx, ny),
+              );
+            });
+            svg += poly(
+              T.map((c) => P(...c, z1)),
+              a + "top",
+            );
+            svg += details(p.details, z1, o[0], o[1]);
             const zm = (z0 + z1) / 2;
-            return { svg, left: P(x0, y1, zm), right: P(x1, y0, zm) };
+            return { svg, ...extremes(B.map((c) => P(...c, zm))) };
           },
 
           cyl(p, o) {
@@ -375,17 +423,18 @@
 
         /*
           The figures. Parts are listed in paint order, bottom to top, and
-          their explode offsets only ever grow in that order, so painting in
-          list order is always correct without a depth sort. A part marked
-          `last` sits flush in another part's +x face and slides out sideways;
-          it's painted after everything else (see render).
+          their vertical offsets only ever grow in that order, so painting in
+          list order is correct at any spin. The exception is a part marked
+          `side`: it sits flush in its host's +x face and slides out
+          sideways, so render() decides per frame whether it's in front of
+          the stack or behind it.
 
           Offsets are centred on the middle part, so the drawing grows both
-          up and down from where it rests instead of shooting off the top.
-          `root` is the pitch a figure's clicks are tuned around.
+          up and down from where it rests. `root` is the pitch a figure's
+          clicks are tuned around.
         */
-        const FIGURES = [
-          {
+        const FIGURES = {
+          cube: {
             name: "Cube",
             note: "A plain block, until you look inside.",
             root: 220,
@@ -443,25 +492,19 @@
                 name: "Switch",
                 side: "r",
                 shape: "box",
-                last: true,
+                flush: true,
                 accent: true,
                 x: [58, 70], y: [-22, 22], z: [52, 82],
-                off: [120, 0, 36],
+                off: [100, 0, 36],
               },
             ],
           },
-          {
+          cylinder: {
             name: "Cylinder",
             note: "Four discs pretending to be one.",
             root: 196,
             parts: [
-              {
-                name: "Foot",
-                side: "l",
-                shape: "cyl",
-                r: 74, z: [0, 12],
-                off: [0, 0, -150],
-              },
+              { name: "Foot", side: "l", shape: "cyl", r: 74, z: [0, 12], off: [0, 0, -150] },
               {
                 name: "Magnetic disk",
                 side: "r",
@@ -472,6 +515,7 @@
                   { circle: [0, 0, 62] },
                   { circle: [0, 0, 24], fill: "top" },
                   { circle: [0, 0, 7], fill: "hole" },
+                  { rect: [30, -6, 52, 6], fill: "top" },
                 ],
                 off: [0, 0, -70],
               },
@@ -508,7 +552,7 @@
               },
             ],
           },
-          {
+          steps: {
             name: "Steps",
             note: "A pyramid is a stack of decisions.",
             root: 247,
@@ -521,38 +565,13 @@
                 details: [{ rect: [-72, -72, 72, 72] }],
                 off: [0, 0, -160],
               },
-              {
-                name: "Terrace",
-                side: "r",
-                shape: "box",
-                x: [-64, 64], y: [-64, 64], z: [24, 48],
-                off: [0, 0, -80],
-              },
-              {
-                name: "Terrace",
-                side: "l",
-                shape: "box",
-                x: [-44, 44], y: [-44, 44], z: [48, 72],
-                off: [0, 0, 0],
-              },
-              {
-                name: "Sanctum",
-                side: "r",
-                shape: "box",
-                x: [-24, 24], y: [-24, 24], z: [72, 96],
-                off: [0, 0, 80],
-              },
-              {
-                name: "Beacon",
-                side: "l",
-                shape: "cyl",
-                accent: true,
-                r: 10, z: [96, 112],
-                off: [0, 0, 150],
-              },
+              { name: "Terrace", side: "r", shape: "box", x: [-64, 64], y: [-64, 64], z: [24, 48], off: [0, 0, -80] },
+              { name: "Terrace", side: "l", shape: "box", x: [-44, 44], y: [-44, 44], z: [48, 72], off: [0, 0, 0] },
+              { name: "Sanctum", side: "r", shape: "box", x: [-24, 24], y: [-24, 24], z: [72, 96], off: [0, 0, 80] },
+              { name: "Beacon", side: "l", shape: "cyl", accent: true, r: 10, z: [96, 112], off: [0, 0, 150] },
             ],
           },
-          {
+          key: {
             name: "Key",
             note: "Every keystroke is a tiny machine.",
             root: 262,
@@ -606,50 +625,26 @@
               },
             ],
           },
-        ];
+        };
 
-        // Minor pentatonic, so any cascade of clicks lands on something
-        // pleasant whatever order the parts happen to settle in.
-        const PENTA = [0, 3, 5, 7, 10, 12, 15];
+        // ?fig=key (or cylinder, steps) to try the other figures.
+        const pick = new URLSearchParams(location.search).get("fig");
+        const def = FIGURES[pick] || FIGURES.cube;
 
-        const main = document.querySelector("main");
+        const zs = def.parts.flatMap((p) => p.z.concat(p.h ? [p.z[0] + p.h] : []));
+        const zc = (Math.min(...zs) + Math.max(...zs)) / 2;
+
         const VIEW = { w: 760, h: 820 };
-
-        const figs = FIGURES.map((def, fi) => {
-          const zs = def.parts.flatMap((p) => p.z.concat(p.h ? [p.z[0] + p.h] : []));
-          // Centre the assembled object on screen.
-          const zc = (Math.min(...zs) + Math.max(...zs)) / 2;
-
-          const el = document.createElement("figure");
-          el.className = "fig";
-          el.style.margin = "0";
-          el.innerHTML =
-            `<svg viewBox="${-VIEW.w / 2} ${-VIEW.h / 2} ${VIEW.w} ${VIEW.h}" role="img" ` +
-            `aria-label="Isometric drawing of a ${def.name.toLowerCase()} that comes apart into ` +
-            `${def.parts.map((p) => p.name.toLowerCase()).join(", ")}"></svg>` +
-            `<figcaption>Fig. ${String(fi + 1).padStart(2, "0")} — ${def.name}<span>${def.note}</span></figcaption>`;
-          main.appendChild(el);
-
-          return {
-            def,
-            el,
-            svg: el.querySelector("svg"),
-            zc,
-            visible: false,
-            dirty: true,
-            // Each part gets its own spring, with slightly different stiffness,
-            // so the parts settle as a cascade rather than all at once.
-            state: def.parts.map((p, i) => ({ e: 0, v: 0, k: 70 + i * 22 })),
-          };
-        });
-
-        const io = new IntersectionObserver((entries) => {
-          for (const entry of entries) {
-            const fig = figs.find((f) => f.el === entry.target);
-            fig.visible = entry.isIntersecting;
-          }
-        });
-        figs.forEach((fig) => io.observe(fig.el));
+        const svg = document.querySelector(".stage");
+        svg.setAttribute("viewBox", `${-VIEW.w / 2} ${-VIEW.h / 2} ${VIEW.w} ${VIEW.h}`);
+        svg.setAttribute(
+          "aria-label",
+          `Isometric drawing of a ${def.name.toLowerCase()} that comes apart into ` +
+            `${def.parts.map((p) => p.name.toLowerCase()).join(", ")}, spins, and goes back together as you scroll`,
+        );
+        document.querySelector(".caption").innerHTML = `Fig. 01 — ${def.name}<span>${def.note}</span>`;
+        const stageName = document.querySelector(".stage-name");
+        const angleOut = document.querySelector(".angle");
 
         const arrow = ([x, y], dir) => {
           // A small filled arrowhead pointing in `dir` (unit vector).
@@ -663,29 +658,53 @@
           ])}"/>`;
         };
 
-        function render(fig) {
-          const { def, state, zc } = fig;
+        // Per part: explode amount, plus a little landing bounce.
+        const state = def.parts.map(() => ({ e: 0, bounce: 0, age: 1 }));
+
+        function render(theta) {
+          cosT = Math.cos(theta);
+          sinT = Math.sin(theta);
           let guides = "";
+          let behind = "";
           let body = "";
-          let lastBody = "";
+          let front = "";
           let labels = "";
+          const pending = [];
 
           def.parts.forEach((p, i) => {
-            const e = state[i].e;
-            const o = [p.off[0] * e, p.off[1] * e, p.off[2] * e - zc];
+            const { e } = state[i];
+            // Bounce: a decaying hop, only ever upwards, after landing.
+            const hop = state[i].bounce * Math.exp(-state[i].age * 9) * Math.abs(Math.sin(state[i].age * 26)) * 7;
+            const o = [p.off[0] * e, p.off[1] * e, p.off[2] * e - zc + hop];
             const cur = shapes[p.shape](p, o, e);
-            if (p.last) {
+            let hidden = false;
+
+            if (p.flush) {
               // A flush part leaves a slot in its host's +x face. Until it has
-              // slid clear of the host it's hidden and the slot is drawn in
-              // its colour, so assembled it reads as one surface with a seam.
+              // slid clear it's hidden and the slot is drawn in its colour, so
+              // assembled it reads as one surface with a seam. Once out, it's
+              // painted in front of or behind the stack depending on which
+              // side of it the spin has carried it to.
               const out = Math.abs(p.off[0] * e) > p.x[1] - p.x[0];
-              const [y0, y1] = p.y;
-              const [z0, z1] = p.z.map((z) => z - zc);
-              lastBody += poly(
-                [P(p.x[1], y0, z0), P(p.x[1], y1, z0), P(p.x[1], y1, z1), P(p.x[1], y0, z1)],
-                out ? "hole" : "a fx",
-              );
-              if (out) lastBody += cur.svg;
+              if (facing(1, 0) > 1e-6) {
+                const [y0, y1] = p.y;
+                const [z0, z1] = p.z.map((z) => z - zc);
+                body += poly(
+                  [P(p.x[1], y0, z0), P(p.x[1], y1, z0), P(p.x[1], y1, z1), P(p.x[1], y0, z1)],
+                  out ? "hole" : "a fx",
+                );
+              }
+              hidden = !out;
+              if (out) {
+                const [wx, wy] = R(p.x[1] + o[0], 0);
+                if (wx + wy > 0) front += cur.svg;
+                else {
+                  behind += cur.svg;
+                  // Tucked behind the stack: no point labelling what you
+                  // can't see.
+                  hidden = true;
+                }
+              }
             } else body += cur.svg;
 
             const travel = Math.hypot(...p.off) * e;
@@ -693,39 +712,57 @@
               // Assembly guides: dashed lines from where the part lives to
               // where it is now, with an arrow pointing home.
               const rest = shapes[p.shape](p, [0, 0, -zc], 0);
+              const alpha = f(Math.min(1, travel / 40));
               for (const key of ["left", "right"]) {
                 const [ax, ay] = rest[key];
                 const [bx, by] = cur[key];
                 const len = Math.hypot(bx - ax, by - ay) || 1;
                 const dir = [(ax - bx) / len, (ay - by) / len];
-                guides += `<line class="guide" x1="${f(bx)}" y1="${f(by)}" x2="${f(ax + dir[0] * -2)}" y2="${f(
-                  ay + dir[1] * -2,
-                )}" opacity="${f(Math.min(1, travel / 40))}"/>`;
-                guides += `<g opacity="${f(Math.min(1, travel / 40))}">${arrow([ax, ay], dir)}</g>`;
+                guides +=
+                  `<g opacity="${alpha}"><line class="guide" x1="${f(bx)}" y1="${f(by)}" x2="${f(ax)}" y2="${f(ay)}"/>` +
+                  `${arrow([ax, ay], dir)}</g>`;
               }
             }
 
             // Labels fade in as the parts separate; assembled, the drawing is
-            // just a shape.
-            const t = Math.min(1, Math.max(0, (e - 0.18) / 0.45));
-            if (t > 0) {
+            // just a shape. Placed after the loop, once all anchors are known.
+            const t = Math.min(1, Math.max(0, (e - 0.25) / 0.45));
+            if (t > 0 && !hidden) {
               const left = p.side === "l";
-              const [ax, ay] = left ? cur.left : cur.right;
-              const lx = left ? -VIEW.w / 2 + 150 : VIEW.w / 2 - 150;
-              const tx = left ? lx - 10 : lx + 10;
-              const tip = [ax + (left ? -8 : 8), ay];
-              labels +=
-                `<g opacity="${f(t)}">` +
-                `<text class="label" x="${f(tx)}" y="${f(ay + 6)}" text-anchor="${left ? "end" : "start"}">` +
-                `${p.name.toUpperCase()}</text>` +
-                `<line class="leader" x1="${f(lx)}" y1="${f(ay)}" x2="${f(tip[0])}" y2="${f(tip[1])}"/>` +
-                arrow(tip, [left ? 1 : -1, 0]) +
-                `</g>`;
+              pending.push({ left, t, name: p.name, anchor: left ? cur.left : cur.right });
             }
           });
 
-          fig.svg.innerHTML = guides + body + lastBody + labels;
-          fig.dirty = false;
+          /*
+            While the figure spins, anchors on the same side can drift into
+            each other. Sort each column by height and push labels apart to a
+            minimum gap; the leader then runs diagonally to its true anchor,
+            the way a draughtsperson would dodge a crowded spot.
+          */
+          const GAP = 30;
+          for (const left of [true, false]) {
+            const col = pending.filter((l) => l.left === left).sort((a, b) => a.anchor[1] - b.anchor[1]);
+            col.forEach((l, i) => {
+              l.y = l.anchor[1];
+              if (i && l.y < col[i - 1].y + GAP) l.y = col[i - 1].y + GAP;
+            });
+            const lx = left ? -VIEW.w / 2 + 130 : VIEW.w / 2 - 130;
+            for (const l of col) {
+              const [ax, ay] = l.anchor;
+              const tip = [ax + (left ? -8 : 8), ay];
+              const elbow = [lx + (left ? 24 : -24), l.y];
+              const len = Math.hypot(tip[0] - elbow[0], tip[1] - elbow[1]) || 1;
+              labels +=
+                `<g opacity="${f(l.t)}">` +
+                `<text class="label" x="${f(left ? lx - 10 : lx + 10)}" y="${f(l.y + 6)}" ` +
+                `text-anchor="${left ? "end" : "start"}">${l.name.toUpperCase()}</text>` +
+                `<polyline class="leader" points="${pts([[lx, l.y], elbow, tip])}"/>` +
+                arrow(tip, [(tip[0] - elbow[0]) / len, (tip[1] - elbow[1]) / len]) +
+                `</g>`;
+            }
+          }
+
+          svg.innerHTML = guides + behind + body + front + labels;
         }
 
         /*
@@ -735,7 +772,7 @@
           - a breathy filtered-noise "whoosh" that follows scroll speed and
             opens up as things come apart;
           - a short wooden click each time a part lands back in place, pitched
-            per part, loudness from how hard it hit.
+            per part, loudness from how fast it was going.
         */
         const sound = {
           ctx: null,
@@ -829,75 +866,115 @@
         });
 
         /*
-          The loop. Scroll speed is measured per frame straight from scrollY,
-          not from scroll events, so when you stop it reads zero on the very
-          next frame and everything starts falling home.
+          The loop. One cycle of scrolling takes the figure through:
+
+            rest → explode → spin 360° → reassemble → rest
+
+          The page is a few cycles tall and we start in the middle. Whenever
+          you get near either end we jump the scroll position by a whole
+          number of cycles, which lands on an identical frame, so you can
+          scroll forever in either direction and never see the seam.
         */
+        const CYCLE = 2400; // px of scroll per cycle
+        const COPIES = 6;
+        document.querySelector(".track").style.height = `${CYCLE * COPIES + innerHeight}px`;
+        history.scrollRestoration = "manual";
+        scrollTo(0, CYCLE * (COPIES / 2));
+
+        // Where each phase ends, as a fraction of the cycle.
+        const PHASES = [
+          ["Assembled", 0.08],
+          ["Exploding", 0.38],
+          ["Rotating", 0.68],
+          ["Assembling", 0.96],
+          ["Assembled", 1],
+        ];
+        const clamp01 = (x) => Math.min(1, Math.max(0, x));
+        const smooth = (x) => x * x * (3 - 2 * x);
+        const span = (u, a, b) => clamp01((u - a) / (b - a));
+
+        // Parts don't all move at once: each one's window is offset so they
+        // peel off one by one, and land one by one, which is also what turns
+        // the clicks into a little run of notes.
+        const STAGGER = 0.45;
+        const n = def.parts.length;
+        const partT = (t, i) => clamp01((t - (i / Math.max(1, n - 1)) * STAGGER) / (1 - STAGGER));
+
+        function pose(u) {
+          const out = span(u, PHASES[0][1], PHASES[1][1]);
+          const spin = span(u, PHASES[1][1], PHASES[2][1]);
+          const back = span(u, PHASES[2][1], PHASES[3][1]);
+          return {
+            // Lifting off eases in and out. Coming back uses a quarter sine,
+            // which leaves gently and arrives at full speed, so each part
+            // lands with a knock instead of drifting into place.
+            e: (i) =>
+              u < PHASES[1][1]
+                ? smooth(partT(out, i))
+                : u < PHASES[2][1]
+                  ? 1
+                  : Math.sin((1 - partT(back, n - 1 - i)) * (Math.PI / 2)),
+            theta: smooth(spin) * Math.PI * 2,
+            stage: PHASES.find(([, end]) => u < end)?.[0] ?? "Assembled",
+          };
+        }
+
         let lastY = scrollY;
-        let lastT = performance.now();
+        let total = 0; // unwrapped scroll distance, immune to the jumps
+        let shown = 0; // `total`, smoothed, so the drawing has a little weight
         let speed = 0;
-        // A short nudge on load so the first figure hints at what it does.
-        let hintUntil = reduceMotion ? 0 : lastT + 650;
+        let lastT = performance.now();
+        let lastKey = "";
+        const hint = document.querySelector(".hint");
+        const PENTA = [0, 3, 5, 7, 10, 12, 15];
 
         function frame(now) {
           const dt = Math.min(0.05, (now - lastT) / 1000);
           lastT = now;
-          const y = scrollY;
-          const raw = Math.abs(y - lastY) / Math.max(dt * 1000, 1); // px per ms
+
+          let y = scrollY;
+          if (y < CYCLE || y > CYCLE * (COPIES - 1)) {
+            const jump = y < CYCLE ? CYCLE * 2 : -CYCLE * 2;
+            scrollTo(0, y + jump);
+            lastY += jump;
+            y = scrollY;
+          }
+          const dy = y - lastY;
           lastY = y;
-          speed += (raw - speed) * (raw > speed ? 0.35 : 0.2);
+          total += dy;
+          if (dy && !hint.classList.contains("gone")) hint.classList.add("gone");
+
+          const ease = reduceMotion ? 1 : 1 - Math.exp(-dt * 12);
+          shown += (total - shown) * ease;
+          if (Math.abs(total - shown) < 0.05) shown = total;
+
+          speed += (Math.abs(dy) / Math.max(dt * 1000, 1) - speed) * 0.2;
           if (speed < 0.001) speed = 0;
 
-          let target = 1 - Math.exp(-speed / 1.4);
-          if (now < hintUntil) target = Math.max(target, 0.4);
+          const u = (((shown / CYCLE) % 1) + 1) % 1;
+          const { e, theta, stage } = pose(u);
 
+          let moving = false;
           let spread = 0;
-          let count = 0;
+          state.forEach((s, i) => {
+            const next = e(i);
+            // Landing: the part was in the air and now it's home.
+            if (s.e > 0.002 && next <= 0.002) {
+              const hit = Math.min(1, (s.e - next) / Math.max(dt, 1e-3) / 3);
+              sound.click(def.root * Math.pow(2, PENTA[i % PENTA.length] / 12), 0.25 + hit);
+              if (!reduceMotion) {
+                s.bounce = 0.4 + hit * 0.6;
+                s.age = 0;
+              }
+            }
+            if (s.age < 1) {
+              s.age += dt;
+              moving = true;
+            }
+            s.e = next;
+            spread += next / n;
+          });
 
-          for (const fig of figs) {
-            fig.state.forEach((s, i) => {
-              const before = s.e;
-              // Opening is quick and firm; closing uses each part's own,
-              // softer spring so they arrive one after another.
-              const opening = target > s.e;
-              const k = opening ? 240 : s.k;
-              const zeta = reduceMotion ? 1 : opening ? 0.9 : 0.55;
-              const c = 2 * zeta * Math.sqrt(k);
-              // Semi-implicit Euler in a few substeps keeps stiff springs stable.
-              const n = 4;
-              const h = dt / n;
-              for (let j = 0; j < n; j++) {
-                s.v += (k * (target - s.e) - c * s.v) * h;
-                s.e += s.v * h;
-                // Parts can't sink into each other: below zero they hit
-                // their seat and bounce, with most of the energy lost.
-                if (s.e < 0) {
-                  s.e = 0;
-                  if (!reduceMotion && s.v < -0.6) {
-                    if (fig.visible) {
-                      const deg = PENTA[i % PENTA.length];
-                      sound.click(fig.def.root * Math.pow(2, deg / 12), -s.v / 5);
-                    }
-                    s.v = -s.v * 0.28;
-                  } else {
-                    s.v = 0;
-                  }
-                }
-              }
-              if (Math.abs(s.v) < 0.0005 && Math.abs(s.e - target) < 0.0005) {
-                s.e = target;
-                s.v = 0;
-              }
-              if (s.e !== before) fig.dirty = true;
-              if (fig.visible) {
-                spread += s.e;
-                count++;
-              }
-            });
-            if (fig.dirty && fig.visible) render(fig);
-          }
-
-          spread = count ? spread / count : 0;
           sound.air(speed, spread);
           if (sound.on) {
             bars.forEach((bar, i) => {
@@ -908,10 +985,19 @@
             bars.forEach((bar) => (bar.style.height = "2px"));
           }
 
+          // Only touch the DOM when something visibly changed.
+          const key = `${f(shown)}|${moving}`;
+          if (key !== lastKey || moving) {
+            lastKey = key;
+            render(theta);
+            stageName.textContent = stage;
+            angleOut.textContent = `Rot ${String(Math.round((theta * 180) / Math.PI) % 360).padStart(3, "0")}°`;
+          }
+
           requestAnimationFrame(frame);
         }
 
-        figs.forEach(render);
+        render(0);
         requestAnimationFrame(frame);
       })();
     </script>
