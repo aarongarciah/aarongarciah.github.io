@@ -1,0 +1,919 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <!-- A sketch, not a page. Keep it out of search until it graduates. -->
+    <meta name="robots" content="noindex" />
+    <title>Exploded views — sketch</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+    <style>
+      /*
+        The palette is lifted from technical exploded-view drawings: one ink
+        colour for every line, paper for faces, and a single tinted accent for
+        the part the drawing wants you to notice. Side faces get two quiet
+        shades of the ink so the solids read as 3D without any real lighting.
+      */
+      :root {
+        --paper: #f7f8fc;
+        --dot: #dfe3f4;
+        --ink: #2f4cf0;
+        --ink-soft: #2f4cf099;
+        --face-top: #ffffff;
+        --face-x: #f0f2fb;
+        --face-y: #e5e9fa;
+        --accent-top: #a9b6fb;
+        --accent-x: #95a5fa;
+        --accent-y: #8597f7;
+        --hole: #dfe4fb;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --paper: #0b1022;
+          --dot: #1a2244;
+          --ink: #8b9bff;
+          --ink-soft: #8b9bff99;
+          --face-top: #121a36;
+          --face-x: #0f1630;
+          --face-y: #0d132a;
+          --accent-top: #3a49a8;
+          --accent-x: #33419a;
+          --accent-y: #2c398a;
+          --hole: #0a0f20;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        background: var(--paper);
+        color: var(--ink);
+      }
+
+      body {
+        margin: 0;
+        font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        /* The faint dot grid of a drafting sheet. Fixed so it reads as the
+           paper under the drawings, not something that scrolls with them. */
+        background-image: radial-gradient(var(--dot) 1px, transparent 1.2px);
+        background-size: 8px 8px;
+        background-attachment: fixed;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      header {
+        position: fixed;
+        inset: 0 0 auto 0;
+        z-index: 1;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 16px
+          max(16px, env(safe-area-inset-left));
+        pointer-events: none;
+      }
+
+      header > * {
+        pointer-events: auto;
+      }
+
+      header a {
+        text-decoration: none;
+      }
+
+      .sound {
+        font: inherit;
+        letter-spacing: inherit;
+        text-transform: inherit;
+        color: inherit;
+        background: var(--paper);
+        border: 1px solid var(--ink);
+        border-radius: 0;
+        padding: 6px 10px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .sound:focus-visible {
+        outline: 2px solid var(--ink);
+        outline-offset: 2px;
+      }
+
+      /* A tiny level meter, so you can see the sound is alive before you
+         hear it. Its bars are driven from JS while sound is on. */
+      .meter {
+        display: inline-flex;
+        align-items: flex-end;
+        gap: 2px;
+        height: 10px;
+      }
+
+      .meter i {
+        width: 2px;
+        height: 2px;
+        background: currentColor;
+      }
+
+      .intro {
+        min-height: 100svh;
+        display: grid;
+        place-content: center;
+        text-align: center;
+        gap: 12px;
+        padding: 16px;
+      }
+
+      .intro h1 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: 0.2em;
+      }
+
+      .intro p {
+        margin: 0;
+        color: var(--ink-soft);
+      }
+
+      .fig {
+        position: relative;
+        min-height: 110svh;
+        display: grid;
+        place-items: center;
+      }
+
+      .fig svg {
+        display: block;
+        width: min(100vw, 960px);
+        height: 92svh;
+        overflow: visible;
+      }
+
+      .fig figcaption {
+        position: absolute;
+        left: max(16px, env(safe-area-inset-left));
+        bottom: 24px;
+        display: grid;
+        gap: 4px;
+      }
+
+      .fig figcaption span {
+        color: var(--ink-soft);
+      }
+
+      footer {
+        min-height: 50svh;
+        display: grid;
+        place-content: center;
+        color: var(--ink-soft);
+      }
+
+      /* SVG classes. Strokes are non-scaling so the line weight stays a crisp
+         1.25px no matter how big the drawing is rendered. */
+      svg * {
+        vector-effect: non-scaling-stroke;
+      }
+
+      .s {
+        stroke: var(--ink);
+        stroke-width: 1.25;
+        stroke-linejoin: round;
+        stroke-linecap: round;
+      }
+
+      .top { fill: var(--face-top); }
+      .fx { fill: var(--face-x); }
+      .fy { fill: var(--face-y); }
+      .a.top { fill: var(--accent-top); }
+      .a.fx { fill: var(--accent-x); }
+      .a.fy { fill: var(--accent-y); }
+      .hole { fill: var(--hole); }
+      .none { fill: none; }
+
+      .guide {
+        fill: none;
+        stroke: var(--ink);
+        stroke-width: 1;
+        stroke-dasharray: 10 7;
+      }
+
+      .leader {
+        fill: none;
+        stroke: var(--ink);
+        stroke-width: 1;
+      }
+
+      .head {
+        fill: var(--ink);
+      }
+
+      .label {
+        fill: var(--ink);
+        font-size: 17px;
+        letter-spacing: 0.12em;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <a href="/">Aarón García Hervás</a>
+      <button class="sound" type="button" aria-pressed="false">
+        <span class="meter" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span class="sound-label">Sound off</span>
+      </button>
+    </header>
+
+    <main>
+      <section class="intro">
+        <h1>Exploded views</h1>
+        <p>Scroll to take things apart. Stop, and they fall back together.</p>
+      </section>
+      <!-- Figures are rendered from the definitions in the script below. -->
+    </main>
+
+    <footer>
+      <p>End of sheet · <a href="/">Back home</a></p>
+    </footer>
+
+    <script>
+      (() => {
+        const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+        /*
+          Isometric projection. World space is z-up; screen space is SVG's
+          y-down. A point further along +x or +y comes towards the viewer and
+          slides down the screen, so for every solid the visible faces are the
+          top (+z), the +x side and the +y side. That fact lets every primitive
+          below draw just three faces with no depth sorting inside a part.
+        */
+        const C30 = Math.cos(Math.PI / 6);
+        const S30 = 0.5;
+        const P = (x, y, z) => [(x - y) * C30, (x + y) * S30 - z];
+        // A circle of radius r on a horizontal plane projects to an
+        // axis-aligned ellipse. sqrt(2) comes from the 45° rotation of iso.
+        const RX = Math.SQRT2 * C30;
+        const RY = Math.SQRT2 * S30;
+
+        const f = (n) => Math.round(n * 10) / 10;
+        const pts = (list) => list.map(([x, y]) => `${f(x)},${f(y)}`).join(" ");
+        const poly = (list, cls) => `<polygon class="s ${cls}" points="${pts(list)}"/>`;
+
+        // Top-face decorations, in the part's local x/y on its top plane.
+        function details(list, z, ox, oy, accent) {
+          return (list || [])
+            .map((d) => {
+              const cls = d.fill || "none";
+              if (d.rect) {
+                const [u0, v0, u1, v1] = d.rect;
+                return poly(
+                  [P(ox + u0, oy + v0, z), P(ox + u1, oy + v0, z), P(ox + u1, oy + v1, z), P(ox + u0, oy + v1, z)],
+                  cls,
+                );
+              }
+              if (d.circle) {
+                const [u, v, r] = d.circle;
+                const [cx, cy] = P(ox + u, oy + v, z);
+                return `<ellipse class="s ${cls}" cx="${f(cx)}" cy="${f(cy)}" rx="${f(r * RX)}" ry="${f(r * RY)}"/>`;
+              }
+              return "";
+            })
+            .join("");
+        }
+
+        /*
+          Each primitive returns its SVG and the two points labels and guides
+          hook onto: the left-most and right-most silhouette points at
+          mid-height. Those are exactly where a draughtsperson would hang a
+          leader line or drop an assembly guide.
+        */
+        const shapes = {
+          // An axis-aligned box. `inset` pulls the top face in to make a
+          // frustum, which is all a keycap really is.
+          box(p, o) {
+            const [x0, x1] = [p.x[0] + o[0], p.x[1] + o[0]];
+            const [y0, y1] = [p.y[0] + o[1], p.y[1] + o[1]];
+            const [z0, z1] = [p.z[0] + o[2], p.z[1] + o[2]];
+            const d = p.inset || 0;
+            const a = p.accent ? "a " : "";
+            const svg =
+              poly(
+                [P(x1, y0, z0), P(x1, y1, z0), P(x1 - d, y1 - d, z1), P(x1 - d, y0 + d, z1)],
+                a + "fx",
+              ) +
+              poly(
+                [P(x0, y1, z0), P(x1, y1, z0), P(x1 - d, y1 - d, z1), P(x0 + d, y1 - d, z1)],
+                a + "fy",
+              ) +
+              poly(
+                [P(x0 + d, y0 + d, z1), P(x1 - d, y0 + d, z1), P(x1 - d, y1 - d, z1), P(x0 + d, y1 - d, z1)],
+                a + "top",
+              ) +
+              details(p.details, z1, o[0], o[1]);
+            const zm = (z0 + z1) / 2;
+            return { svg, left: P(x0, y1, zm), right: P(x1, y0, zm) };
+          },
+
+          cyl(p, o) {
+            const [cx, cy] = [(p.c?.[0] || 0) + o[0], (p.c?.[1] || 0) + o[1]];
+            const [z0, z1] = [p.z[0] + o[2], p.z[1] + o[2]];
+            const rx = p.r * RX;
+            const ry = p.r * RY;
+            const [bx, by] = P(cx, cy, z0);
+            const [, ty] = P(cx, cy, z1);
+            const a = p.accent ? "a " : "";
+            // Side wall: down the left edge, round the front half of the
+            // bottom ellipse (sweep 0 goes via the bottom on screen), back up.
+            const side =
+              `<path class="s ${a}fx" d="M${f(bx - rx)},${f(ty)} L${f(bx - rx)},${f(by)} ` +
+              `A${f(rx)},${f(ry)} 0 0 0 ${f(bx + rx)},${f(by)} L${f(bx + rx)},${f(ty)} Z"/>`;
+            const top = `<ellipse class="s ${a}top" cx="${f(bx)}" cy="${f(ty)}" rx="${f(rx)}" ry="${f(ry)}"/>`;
+            const ym = (by + ty) / 2;
+            return {
+              svg: side + top + details(p.details, z1, cx, cy),
+              left: [bx - rx, ym],
+              right: [bx + rx, ym],
+            };
+          },
+
+          // A coil spring. Its height grows with the part's explode amount so
+          // it visibly decompresses as the parts around it fly apart.
+          helix(p, o, e) {
+            const [cx, cy] = [o[0], o[1]];
+            const z0 = p.z[0] + o[2];
+            const z1 = z0 + p.h + p.stretch * Math.max(0, e);
+            const steps = p.turns * 28;
+            const line = [];
+            for (let i = 0; i <= steps; i++) {
+              const t = (i / steps) * p.turns * Math.PI * 2;
+              line.push(P(cx + p.r * Math.cos(t), cy + p.r * Math.sin(t), z0 + ((z1 - z0) * i) / steps));
+            }
+            const [bx] = P(cx, cy, z0);
+            const ym = (P(cx, cy, z0)[1] + P(cx, cy, z1)[1]) / 2;
+            return {
+              svg: `<polyline class="s none" points="${pts(line)}"/>`,
+              left: [bx - p.r * RX, ym],
+              right: [bx + p.r * RX, ym],
+            };
+          },
+        };
+
+        /*
+          The figures. Parts are listed in paint order, bottom to top, and
+          their explode offsets only ever grow in that order, so painting in
+          list order is always correct without a depth sort. A part marked
+          `last` sits flush in another part's +x face and slides out sideways;
+          it's painted after everything else (see render).
+
+          Offsets are centred on the middle part, so the drawing grows both
+          up and down from where it rests instead of shooting off the top.
+          `root` is the pitch a figure's clicks are tuned around.
+        */
+        const FIGURES = [
+          {
+            name: "Cube",
+            note: "A plain block, until you look inside.",
+            root: 220,
+            parts: [
+              {
+                name: "Base plate",
+                side: "l",
+                shape: "box",
+                x: [-70, 70], y: [-70, 70], z: [0, 14],
+                details: [
+                  { circle: [-54, -54, 6], fill: "hole" },
+                  { circle: [54, -54, 6], fill: "hole" },
+                  { circle: [-54, 54, 6], fill: "hole" },
+                  { circle: [54, 54, 6], fill: "hole" },
+                ],
+                off: [0, 0, -150],
+              },
+              {
+                name: "Logic board",
+                side: "r",
+                shape: "box",
+                accent: true,
+                x: [-70, 70], y: [-70, 70], z: [14, 22],
+                details: [
+                  { rect: [-44, -44, -4, -14], fill: "top" },
+                  { rect: [10, -44, 44, -26], fill: "top" },
+                  { rect: [10, -16, 44, 2], fill: "top" },
+                  { rect: [-44, 4, -20, 44], fill: "top" },
+                ],
+                off: [0, 0, -75],
+              },
+              {
+                name: "Core",
+                side: "l",
+                shape: "box",
+                x: [-70, 70], y: [-70, 70], z: [22, 112],
+                details: [
+                  { circle: [0, 0, 40] },
+                  { circle: [0, 0, 26], fill: "hole" },
+                ],
+                off: [0, 0, 0],
+              },
+              {
+                name: "Lid",
+                side: "r",
+                shape: "box",
+                x: [-70, 70], y: [-70, 70], z: [112, 140],
+                details: [
+                  { rect: [-56, -56, 56, 24] },
+                  { rect: [-56, 38, -36, 56], fill: "hole" },
+                ],
+                off: [0, 0, 150],
+              },
+              {
+                name: "Switch",
+                side: "r",
+                shape: "box",
+                last: true,
+                accent: true,
+                x: [58, 70], y: [-22, 22], z: [52, 82],
+                off: [120, 0, 36],
+              },
+            ],
+          },
+          {
+            name: "Cylinder",
+            note: "Four discs pretending to be one.",
+            root: 196,
+            parts: [
+              {
+                name: "Foot",
+                side: "l",
+                shape: "cyl",
+                r: 74, z: [0, 12],
+                off: [0, 0, -150],
+              },
+              {
+                name: "Magnetic disk",
+                side: "r",
+                shape: "cyl",
+                accent: true,
+                r: 74, z: [12, 18],
+                details: [
+                  { circle: [0, 0, 62] },
+                  { circle: [0, 0, 24], fill: "top" },
+                  { circle: [0, 0, 7], fill: "hole" },
+                ],
+                off: [0, 0, -70],
+              },
+              {
+                name: "Body",
+                side: "l",
+                shape: "cyl",
+                r: 74, z: [18, 82],
+                details: [
+                  { circle: [0, 0, 44] },
+                  { circle: [0, 0, 24], fill: "hole" },
+                ],
+                off: [0, 0, 10],
+              },
+              {
+                name: "Hub",
+                side: "r",
+                shape: "cyl",
+                accent: true,
+                r: 24, z: [82, 96],
+                details: [{ circle: [0, 0, 8], fill: "hole" }],
+                off: [0, 0, 90],
+              },
+              {
+                name: "Cap",
+                side: "l",
+                shape: "cyl",
+                r: 74, z: [82, 104],
+                details: [
+                  { circle: [0, 0, 60] },
+                  { rect: [-8, -66, 8, -50], fill: "hole" },
+                ],
+                off: [0, 0, 170],
+              },
+            ],
+          },
+          {
+            name: "Steps",
+            note: "A pyramid is a stack of decisions.",
+            root: 247,
+            parts: [
+              {
+                name: "Foundation",
+                side: "l",
+                shape: "box",
+                x: [-84, 84], y: [-84, 84], z: [0, 24],
+                details: [{ rect: [-72, -72, 72, 72] }],
+                off: [0, 0, -160],
+              },
+              {
+                name: "Terrace",
+                side: "r",
+                shape: "box",
+                x: [-64, 64], y: [-64, 64], z: [24, 48],
+                off: [0, 0, -80],
+              },
+              {
+                name: "Terrace",
+                side: "l",
+                shape: "box",
+                x: [-44, 44], y: [-44, 44], z: [48, 72],
+                off: [0, 0, 0],
+              },
+              {
+                name: "Sanctum",
+                side: "r",
+                shape: "box",
+                x: [-24, 24], y: [-24, 24], z: [72, 96],
+                off: [0, 0, 80],
+              },
+              {
+                name: "Beacon",
+                side: "l",
+                shape: "cyl",
+                accent: true,
+                r: 10, z: [96, 112],
+                off: [0, 0, 150],
+              },
+            ],
+          },
+          {
+            name: "Key",
+            note: "Every keystroke is a tiny machine.",
+            root: 262,
+            parts: [
+              {
+                name: "Plate",
+                side: "l",
+                shape: "box",
+                x: [-80, 80], y: [-80, 80], z: [0, 8],
+                details: [{ rect: [-36, -36, 36, 36], fill: "hole" }],
+                off: [0, 0, -150],
+              },
+              {
+                name: "Housing",
+                side: "r",
+                shape: "box",
+                x: [-36, 36], y: [-36, 36], z: [8, 44],
+                details: [
+                  { rect: [-28, -28, 28, 28] },
+                  { circle: [0, 0, 11], fill: "hole" },
+                ],
+                off: [0, 0, -60],
+              },
+              {
+                name: "Spring",
+                side: "l",
+                shape: "helix",
+                r: 13, z: [44], h: 10, stretch: 56, turns: 5,
+                off: [0, 0, -10],
+              },
+              {
+                name: "Stem",
+                side: "r",
+                shape: "box",
+                accent: true,
+                x: [-7, 7], y: [-7, 7], z: [54, 80],
+                details: [
+                  { rect: [-7, -2, 7, 2], fill: "hole" },
+                  { rect: [-2, -7, 2, 7], fill: "hole" },
+                ],
+                off: [0, 0, 60],
+              },
+              {
+                name: "Keycap",
+                side: "l",
+                shape: "box",
+                inset: 12,
+                x: [-60, 60], y: [-60, 60], z: [44, 90],
+                details: [{ circle: [0, 0, 22] }],
+                off: [0, 0, 160],
+              },
+            ],
+          },
+        ];
+
+        // Minor pentatonic, so any cascade of clicks lands on something
+        // pleasant whatever order the parts happen to settle in.
+        const PENTA = [0, 3, 5, 7, 10, 12, 15];
+
+        const main = document.querySelector("main");
+        const VIEW = { w: 760, h: 820 };
+
+        const figs = FIGURES.map((def, fi) => {
+          const zs = def.parts.flatMap((p) => p.z.concat(p.h ? [p.z[0] + p.h] : []));
+          // Centre the assembled object on screen.
+          const zc = (Math.min(...zs) + Math.max(...zs)) / 2;
+
+          const el = document.createElement("figure");
+          el.className = "fig";
+          el.style.margin = "0";
+          el.innerHTML =
+            `<svg viewBox="${-VIEW.w / 2} ${-VIEW.h / 2} ${VIEW.w} ${VIEW.h}" role="img" ` +
+            `aria-label="Isometric drawing of a ${def.name.toLowerCase()} that comes apart into ` +
+            `${def.parts.map((p) => p.name.toLowerCase()).join(", ")}"></svg>` +
+            `<figcaption>Fig. ${String(fi + 1).padStart(2, "0")} — ${def.name}<span>${def.note}</span></figcaption>`;
+          main.appendChild(el);
+
+          return {
+            def,
+            el,
+            svg: el.querySelector("svg"),
+            zc,
+            visible: false,
+            dirty: true,
+            // Each part gets its own spring, with slightly different stiffness,
+            // so the parts settle as a cascade rather than all at once.
+            state: def.parts.map((p, i) => ({ e: 0, v: 0, k: 70 + i * 22 })),
+          };
+        });
+
+        const io = new IntersectionObserver((entries) => {
+          for (const entry of entries) {
+            const fig = figs.find((f) => f.el === entry.target);
+            fig.visible = entry.isIntersecting;
+          }
+        });
+        figs.forEach((fig) => io.observe(fig.el));
+
+        const arrow = ([x, y], dir) => {
+          // A small filled arrowhead pointing in `dir` (unit vector).
+          const [dx, dy] = dir;
+          const s = 7;
+          const w = 3.2;
+          return `<polygon class="head" points="${pts([
+            [x, y],
+            [x - dx * s - dy * w, y - dy * s + dx * w],
+            [x - dx * s + dy * w, y - dy * s - dx * w],
+          ])}"/>`;
+        };
+
+        function render(fig) {
+          const { def, state, zc } = fig;
+          let guides = "";
+          let body = "";
+          let lastBody = "";
+          let labels = "";
+
+          def.parts.forEach((p, i) => {
+            const e = state[i].e;
+            const o = [p.off[0] * e, p.off[1] * e, p.off[2] * e - zc];
+            const cur = shapes[p.shape](p, o, e);
+            if (p.last) {
+              // A flush part leaves a slot in its host's +x face. Until it has
+              // slid clear of the host it's hidden and the slot is drawn in
+              // its colour, so assembled it reads as one surface with a seam.
+              const out = Math.abs(p.off[0] * e) > p.x[1] - p.x[0];
+              const [y0, y1] = p.y;
+              const [z0, z1] = p.z.map((z) => z - zc);
+              lastBody += poly(
+                [P(p.x[1], y0, z0), P(p.x[1], y1, z0), P(p.x[1], y1, z1), P(p.x[1], y0, z1)],
+                out ? "hole" : "a fx",
+              );
+              if (out) lastBody += cur.svg;
+            } else body += cur.svg;
+
+            const travel = Math.hypot(...p.off) * e;
+            if (travel > 4) {
+              // Assembly guides: dashed lines from where the part lives to
+              // where it is now, with an arrow pointing home.
+              const rest = shapes[p.shape](p, [0, 0, -zc], 0);
+              for (const key of ["left", "right"]) {
+                const [ax, ay] = rest[key];
+                const [bx, by] = cur[key];
+                const len = Math.hypot(bx - ax, by - ay) || 1;
+                const dir = [(ax - bx) / len, (ay - by) / len];
+                guides += `<line class="guide" x1="${f(bx)}" y1="${f(by)}" x2="${f(ax + dir[0] * -2)}" y2="${f(
+                  ay + dir[1] * -2,
+                )}" opacity="${f(Math.min(1, travel / 40))}"/>`;
+                guides += `<g opacity="${f(Math.min(1, travel / 40))}">${arrow([ax, ay], dir)}</g>`;
+              }
+            }
+
+            // Labels fade in as the parts separate; assembled, the drawing is
+            // just a shape.
+            const t = Math.min(1, Math.max(0, (e - 0.18) / 0.45));
+            if (t > 0) {
+              const left = p.side === "l";
+              const [ax, ay] = left ? cur.left : cur.right;
+              const lx = left ? -VIEW.w / 2 + 150 : VIEW.w / 2 - 150;
+              const tx = left ? lx - 10 : lx + 10;
+              const tip = [ax + (left ? -8 : 8), ay];
+              labels +=
+                `<g opacity="${f(t)}">` +
+                `<text class="label" x="${f(tx)}" y="${f(ay + 6)}" text-anchor="${left ? "end" : "start"}">` +
+                `${p.name.toUpperCase()}</text>` +
+                `<line class="leader" x1="${f(lx)}" y1="${f(ay)}" x2="${f(tip[0])}" y2="${f(tip[1])}"/>` +
+                arrow(tip, [left ? 1 : -1, 0]) +
+                `</g>`;
+            }
+          });
+
+          fig.svg.innerHTML = guides + body + lastBody + labels;
+          fig.dirty = false;
+        }
+
+        /*
+          Sound. Nothing is created until the toggle is pressed: browsers
+          won't start audio without a gesture anyway, and a page that makes
+          noise unasked is rude. Two voices:
+          - a breathy filtered-noise "whoosh" that follows scroll speed and
+            opens up as things come apart;
+          - a short wooden click each time a part lands back in place, pitched
+            per part, loudness from how hard it hit.
+        */
+        const sound = {
+          ctx: null,
+          on: false,
+          start() {
+            if (!this.ctx) {
+              const ctx = new (window.AudioContext || window.webkitAudioContext)();
+              this.ctx = ctx;
+              this.master = ctx.createGain();
+              this.master.gain.value = 0;
+              this.master.connect(ctx.destination);
+
+              const len = ctx.sampleRate * 2;
+              this.noise = ctx.createBuffer(1, len, ctx.sampleRate);
+              const data = this.noise.getChannelData(0);
+              for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+
+              const src = ctx.createBufferSource();
+              src.buffer = this.noise;
+              src.loop = true;
+              this.whooshFilter = ctx.createBiquadFilter();
+              this.whooshFilter.type = "bandpass";
+              this.whooshFilter.frequency.value = 400;
+              this.whooshFilter.Q.value = 0.8;
+              this.whooshGain = ctx.createGain();
+              this.whooshGain.gain.value = 0;
+              src.connect(this.whooshFilter).connect(this.whooshGain).connect(this.master);
+              src.start();
+            }
+            this.ctx.resume();
+            this.master.gain.setTargetAtTime(0.9, this.ctx.currentTime, 0.05);
+            this.on = true;
+          },
+          stop() {
+            if (!this.ctx) return;
+            this.master.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
+            this.on = false;
+            setTimeout(() => !this.on && this.ctx.suspend(), 300);
+          },
+          air(speed, spread) {
+            if (!this.on) return;
+            const t = this.ctx.currentTime;
+            this.whooshGain.gain.setTargetAtTime(Math.min(0.22, speed * 0.09), t, 0.06);
+            this.whooshFilter.frequency.setTargetAtTime(350 + spread * 1600, t, 0.08);
+          },
+          click(freq, strength) {
+            if (!this.on) return;
+            const ctx = this.ctx;
+            const t = ctx.currentTime;
+            const g = Math.min(1, strength);
+
+            // The tone: a triangle blip that drops a touch in pitch, which
+            // reads as "wood" more than "beep".
+            const osc = ctx.createOscillator();
+            osc.type = "triangle";
+            osc.frequency.setValueAtTime(freq * 2, t);
+            osc.frequency.exponentialRampToValueAtTime(freq * 1.6, t + 0.08);
+            const og = ctx.createGain();
+            og.gain.setValueAtTime(0.0001, t);
+            og.gain.exponentialRampToValueAtTime(0.28 * g + 0.0001, t + 0.004);
+            og.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+            osc.connect(og).connect(this.master);
+            osc.start(t);
+            osc.stop(t + 0.16);
+
+            // The tick: a very short burst of bright noise for the contact.
+            const n = ctx.createBufferSource();
+            n.buffer = this.noise;
+            const bp = ctx.createBiquadFilter();
+            bp.type = "bandpass";
+            bp.frequency.value = 3200 + Math.random() * 1200;
+            bp.Q.value = 1.4;
+            const ng = ctx.createGain();
+            ng.gain.setValueAtTime(0.0001, t);
+            ng.gain.exponentialRampToValueAtTime(0.35 * g + 0.0001, t + 0.002);
+            ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
+            n.connect(bp).connect(ng).connect(this.master);
+            n.start(t, Math.random());
+            n.stop(t + 0.04);
+          },
+        };
+
+        const button = document.querySelector(".sound");
+        const buttonLabel = button.querySelector(".sound-label");
+        const bars = [...button.querySelectorAll(".meter i")];
+        button.addEventListener("click", () => {
+          if (sound.on) sound.stop();
+          else sound.start();
+          button.setAttribute("aria-pressed", String(sound.on));
+          buttonLabel.textContent = sound.on ? "Sound on" : "Sound off";
+        });
+
+        /*
+          The loop. Scroll speed is measured per frame straight from scrollY,
+          not from scroll events, so when you stop it reads zero on the very
+          next frame and everything starts falling home.
+        */
+        let lastY = scrollY;
+        let lastT = performance.now();
+        let speed = 0;
+        // A short nudge on load so the first figure hints at what it does.
+        let hintUntil = reduceMotion ? 0 : lastT + 650;
+
+        function frame(now) {
+          const dt = Math.min(0.05, (now - lastT) / 1000);
+          lastT = now;
+          const y = scrollY;
+          const raw = Math.abs(y - lastY) / Math.max(dt * 1000, 1); // px per ms
+          lastY = y;
+          speed += (raw - speed) * (raw > speed ? 0.35 : 0.2);
+          if (speed < 0.001) speed = 0;
+
+          let target = 1 - Math.exp(-speed / 1.4);
+          if (now < hintUntil) target = Math.max(target, 0.4);
+
+          let spread = 0;
+          let count = 0;
+
+          for (const fig of figs) {
+            fig.state.forEach((s, i) => {
+              const before = s.e;
+              // Opening is quick and firm; closing uses each part's own,
+              // softer spring so they arrive one after another.
+              const opening = target > s.e;
+              const k = opening ? 240 : s.k;
+              const zeta = reduceMotion ? 1 : opening ? 0.9 : 0.55;
+              const c = 2 * zeta * Math.sqrt(k);
+              // Semi-implicit Euler in a few substeps keeps stiff springs stable.
+              const n = 4;
+              const h = dt / n;
+              for (let j = 0; j < n; j++) {
+                s.v += (k * (target - s.e) - c * s.v) * h;
+                s.e += s.v * h;
+                // Parts can't sink into each other: below zero they hit
+                // their seat and bounce, with most of the energy lost.
+                if (s.e < 0) {
+                  s.e = 0;
+                  if (!reduceMotion && s.v < -0.6) {
+                    if (fig.visible) {
+                      const deg = PENTA[i % PENTA.length];
+                      sound.click(fig.def.root * Math.pow(2, deg / 12), -s.v / 5);
+                    }
+                    s.v = -s.v * 0.28;
+                  } else {
+                    s.v = 0;
+                  }
+                }
+              }
+              if (Math.abs(s.v) < 0.0005 && Math.abs(s.e - target) < 0.0005) {
+                s.e = target;
+                s.v = 0;
+              }
+              if (s.e !== before) fig.dirty = true;
+              if (fig.visible) {
+                spread += s.e;
+                count++;
+              }
+            });
+            if (fig.dirty && fig.visible) render(fig);
+          }
+
+          spread = count ? spread / count : 0;
+          sound.air(speed, spread);
+          if (sound.on) {
+            bars.forEach((bar, i) => {
+              const level = Math.min(1, speed * 0.8 + spread * 0.6) * (0.6 + 0.4 * Math.sin(now / 90 + i * 1.7));
+              bar.style.height = `${2 + Math.round(Math.max(0, level) * 8)}px`;
+            });
+          } else {
+            bars.forEach((bar) => (bar.style.height = "2px"));
+          }
+
+          requestAnimationFrame(frame);
+        }
+
+        figs.forEach(render);
+        requestAnimationFrame(frame);
+      })();
+    </script>
+  </body>
+</html>
