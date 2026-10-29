@@ -129,30 +129,25 @@
         background: currentColor;
       }
 
-      .intro {
-        min-height: 100svh;
-        display: grid;
-        place-content: center;
-        text-align: center;
-        gap: 12px;
-        padding: 16px;
+      /* The page scrolls, the drawing doesn't. The scrollbar would give away
+         that the "infinite" sheet is a few screens long that quietly wrap. */
+      html {
+        scrollbar-width: none;
       }
 
-      .intro h1 {
-        margin: 0;
-        font-size: 14px;
-        font-weight: 500;
-        letter-spacing: 0.2em;
+      html::-webkit-scrollbar {
+        display: none;
       }
 
-      .intro p {
-        margin: 0;
-        color: var(--ink-soft);
+      .runway {
+        /* Height is set from JS: a whole number of cycles. */
+        pointer-events: none;
       }
 
       .fig {
-        position: relative;
-        min-height: 110svh;
+        position: fixed;
+        inset: 0;
+        margin: 0;
         display: grid;
         place-items: center;
       }
@@ -167,7 +162,7 @@
       .fig figcaption {
         position: absolute;
         left: max(16px, env(safe-area-inset-left));
-        bottom: 24px;
+        bottom: max(24px, env(safe-area-inset-bottom));
         display: grid;
         gap: 4px;
       }
@@ -176,11 +171,22 @@
         color: var(--ink-soft);
       }
 
-      footer {
-        min-height: 50svh;
-        display: grid;
-        place-content: center;
+      .fig .status {
+        font-variant-numeric: tabular-nums;
+      }
+
+      .hint {
+        position: fixed;
+        right: max(16px, env(safe-area-inset-right));
+        bottom: max(24px, env(safe-area-inset-bottom));
+        margin: 0;
         color: var(--ink-soft);
+        text-align: right;
+        transition: opacity 600ms ease;
+      }
+
+      .hint.gone {
+        opacity: 0;
       }
 
       /* SVG classes. Strokes are non-scaling so the line weight stays a crisp
@@ -240,16 +246,11 @@
     </header>
 
     <main>
-      <section class="intro">
-        <h1>Exploded views</h1>
-        <p>Scroll to take things apart. Stop, and they fall back together.</p>
-      </section>
-      <!-- Figures are rendered from the definitions in the script below. -->
+      <!-- The figure is rendered from the definitions in the script below. -->
+      <div class="runway" aria-hidden="true"></div>
     </main>
 
-    <footer>
-      <p>End of sheet · <a href="/">Back home</a></p>
-    </footer>
+    <p class="hint">Scroll. It comes apart,<br />turns, and goes back together.</p>
 
     <script>
       (() => {
@@ -264,7 +265,28 @@
         */
         const C30 = Math.cos(Math.PI / 6);
         const S30 = 0.5;
-        const P = (x, y, z) => [(x - y) * C30, (x + y) * S30 - z];
+        // The whole drawing can turn about its vertical axis. The turn is
+        // applied in world space just before projecting, so every primitive
+        // gets it for free; only face visibility has to know about it.
+        let cosR = 1;
+        let sinR = 0;
+        const setTurn = (a) => {
+          cosR = Math.cos(a);
+          sinR = Math.sin(a);
+        };
+        const P = (x, y, z) => {
+          const X = x * cosR - y * sinR;
+          const Y = x * sinR + y * cosR;
+          return [(X - Y) * C30, (X + Y) * S30 - z];
+        };
+        // A vertical face with outward normal (nx, ny) faces the viewer when,
+        // once turned, it points along +x+y. Which of the two side shades it
+        // gets follows where it ends up on screen: right-facing or left-facing.
+        const facing = (nx, ny) => {
+          const X = nx * cosR - ny * sinR;
+          const Y = nx * sinR + ny * cosR;
+          return { visible: X + Y > 1e-6, shade: X - Y > 0 ? "fx" : "fy" };
+        };
         // A circle of radius r on a horizontal plane projects to an
         // axis-aligned ellipse. sqrt(2) comes from the 45° rotation of iso.
         const RX = Math.SQRT2 * C30;
@@ -311,22 +333,30 @@
             const [z0, z1] = [p.z[0] + o[2], p.z[1] + o[2]];
             const d = p.inset || 0;
             const a = p.accent ? "a " : "";
-            const svg =
-              poly(
-                [P(x1, y0, z0), P(x1, y1, z0), P(x1 - d, y1 - d, z1), P(x1 - d, y0 + d, z1)],
-                a + "fx",
-              ) +
-              poly(
-                [P(x0, y1, z0), P(x1, y1, z0), P(x1 - d, y1 - d, z1), P(x0 + d, y1 - d, z1)],
-                a + "fy",
-              ) +
+            // Four sides; a convex solid seen from above shows at most two,
+            // and those never overlap, so they need no ordering between them.
+            const sides = [
+              [1, 0, [[x1, y0, z0], [x1, y1, z0], [x1 - d, y1 - d, z1], [x1 - d, y0 + d, z1]]],
+              [-1, 0, [[x0, y0, z0], [x0, y1, z0], [x0 + d, y1 - d, z1], [x0 + d, y0 + d, z1]]],
+              [0, 1, [[x0, y1, z0], [x1, y1, z0], [x1 - d, y1 - d, z1], [x0 + d, y1 - d, z1]]],
+              [0, -1, [[x0, y0, z0], [x1, y0, z0], [x1 - d, y0 + d, z1], [x0 + d, y0 + d, z1]]],
+            ];
+            let svg = "";
+            for (const [nx, ny, corners] of sides) {
+              const face = facing(nx, ny);
+              if (face.visible) svg += poly(corners.map((c) => P(...c)), a + face.shade);
+            }
+            svg +=
               poly(
                 [P(x0 + d, y0 + d, z1), P(x1 - d, y0 + d, z1), P(x1 - d, y1 - d, z1), P(x0 + d, y1 - d, z1)],
                 a + "top",
-              ) +
-              details(p.details, z1, o[0], o[1]);
+              ) + details(p.details, z1, o[0], o[1]);
+            // Silhouette extremes at mid-height, wherever the turn put them.
             const zm = (z0 + z1) / 2;
-            return { svg, left: P(x0, y1, zm), right: P(x1, y0, zm) };
+            const ring = [P(x0, y0, zm), P(x1, y0, zm), P(x1, y1, zm), P(x0, y1, zm)];
+            const left = ring.reduce((m, q) => (q[0] < m[0] ? q : m));
+            const right = ring.reduce((m, q) => (q[0] > m[0] ? q : m));
+            return { svg, left, right };
           },
 
           cyl(p, o) {
@@ -615,41 +645,33 @@
         const main = document.querySelector("main");
         const VIEW = { w: 760, h: 820 };
 
-        const figs = FIGURES.map((def, fi) => {
+        // One figure on the sheet. ?fig=2 (1–4) picks another to try.
+        const fi = Math.min(FIGURES.length, Math.max(1, parseInt(new URLSearchParams(location.search).get("fig"), 10) || 1)) - 1;
+        const fig = (() => {
+          const def = FIGURES[fi];
           const zs = def.parts.flatMap((p) => p.z.concat(p.h ? [p.z[0] + p.h] : []));
           // Centre the assembled object on screen.
           const zc = (Math.min(...zs) + Math.max(...zs)) / 2;
 
           const el = document.createElement("figure");
           el.className = "fig";
-          el.style.margin = "0";
           el.innerHTML =
             `<svg viewBox="${-VIEW.w / 2} ${-VIEW.h / 2} ${VIEW.w} ${VIEW.h}" role="img" ` +
             `aria-label="Isometric drawing of a ${def.name.toLowerCase()} that comes apart into ` +
-            `${def.parts.map((p) => p.name.toLowerCase()).join(", ")}"></svg>` +
-            `<figcaption>Fig. ${String(fi + 1).padStart(2, "0")} — ${def.name}<span>${def.note}</span></figcaption>`;
+            `${def.parts.map((p) => p.name.toLowerCase()).join(", ")}, turns, and goes back together"></svg>` +
+            `<figcaption>Fig. ${String(fi + 1).padStart(2, "0")} — ${def.name}<span>${def.note}</span>` +
+            `<span class="status" aria-hidden="true"></span></figcaption>`;
           main.appendChild(el);
 
           return {
             def,
             el,
             svg: el.querySelector("svg"),
+            status: el.querySelector(".status"),
             zc,
-            visible: false,
-            dirty: true,
-            // Each part gets its own spring, with slightly different stiffness,
-            // so the parts settle as a cascade rather than all at once.
-            state: def.parts.map((p, i) => ({ e: 0, v: 0, k: 70 + i * 22 })),
+            state: def.parts.map(() => ({ e: 0 })),
           };
-        });
-
-        const io = new IntersectionObserver((entries) => {
-          for (const entry of entries) {
-            const fig = figs.find((f) => f.el === entry.target);
-            fig.visible = entry.isIntersecting;
-          }
-        });
-        figs.forEach((fig) => io.observe(fig.el));
+        })();
 
         const arrow = ([x, y], dir) => {
           // A small filled arrowhead pointing in `dir` (unit vector).
@@ -666,6 +688,7 @@
         function render(fig) {
           const { def, state, zc } = fig;
           let guides = "";
+          let firstBody = "";
           let body = "";
           let lastBody = "";
           let labels = "";
@@ -678,14 +701,19 @@
               // A flush part leaves a slot in its host's +x face. Until it has
               // slid clear of the host it's hidden and the slot is drawn in
               // its colour, so assembled it reads as one surface with a seam.
+              // Once the turn swings that face away, the slot can't be seen
+              // and the part, if it's out, sits behind everything else.
               const out = Math.abs(p.off[0] * e) > p.x[1] - p.x[0];
-              const [y0, y1] = p.y;
-              const [z0, z1] = p.z.map((z) => z - zc);
-              lastBody += poly(
-                [P(p.x[1], y0, z0), P(p.x[1], y1, z0), P(p.x[1], y1, z1), P(p.x[1], y0, z1)],
-                out ? "hole" : "a fx",
-              );
-              if (out) lastBody += cur.svg;
+              const face = facing(1, 0);
+              if (face.visible) {
+                const [y0, y1] = p.y;
+                const [z0, z1] = p.z.map((z) => z - zc);
+                lastBody += poly(
+                  [P(p.x[1], y0, z0), P(p.x[1], y1, z0), P(p.x[1], y1, z1), P(p.x[1], y0, z1)],
+                  out ? "hole" : "a " + face.shade,
+                );
+                if (out) lastBody += cur.svg;
+              } else if (out) firstBody += cur.svg;
             } else body += cur.svg;
 
             const travel = Math.hypot(...p.off) * e;
@@ -724,8 +752,7 @@
             }
           });
 
-          fig.svg.innerHTML = guides + body + lastBody + labels;
-          fig.dirty = false;
+          fig.svg.innerHTML = guides + firstBody + body + lastBody + labels;
         }
 
         /*
@@ -829,79 +856,113 @@
         });
 
         /*
-          The loop. Scroll speed is measured per frame straight from scrollY,
-          not from scroll events, so when you stop it reads zero on the very
-          next frame and everything starts falling home.
+          The loop. Scroll position, not speed, drives the drawing: every
+          CYCLE of scroll is one full turn of the story, and it repeats.
+
+            rest → explode → turn 360° → reassemble → rest
+
+          The runway is a handful of cycles tall. Whenever you get near
+          either end the page jumps back or forward by whole cycles, which
+          lands on an identical frame, so the sheet never runs out.
         */
-        let lastY = scrollY;
+        const CYCLES = 7; // runway length, in cycles
+        const HOME = 3; // the cycle we park in after a wrap
+        const W = {
+          explode: [0.05, 0.33],
+          turn: [0.36, 0.64],
+          collapse: [0.67, 0.93],
+        };
+        const STAGGER = 0.1; // each part starts this much of its window later
+
+        const runway = document.querySelector(".runway");
+        const hint = document.querySelector(".hint");
+        const clamp01 = (t) => Math.min(1, Math.max(0, t));
+        const inOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+        const span = (p, [a, b]) => clamp01((p - a) / (b - a));
+        // Where part i is within a window, staggered so they move one after another.
+        const local = (t, i, n) => {
+          const len = 1 - (n - 1) * STAGGER;
+          return clamp01((t - i * STAGGER) / len);
+        };
+
+        let L = 1; // px per cycle
+        let wrapped = 0; // px the page has been jumped by, so progress stays continuous
+        // Size the runway and park at `p` cycles of progress.
+        function layout(p) {
+          // A hidden or not-yet-laid-out window can report a zero height.
+          L = Math.round(Math.max(innerHeight, 320) * 2.4);
+          runway.style.height = `${CYCLES * L + innerHeight}px`;
+          const whole = Math.floor(p);
+          scrollTo(0, (HOME + p - whole) * L);
+          wrapped = (whole - HOME) * L;
+        }
+        if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+        layout(HOME);
+        addEventListener("resize", () => layout((scrollY + wrapped) / L));
+
+        let shown = (scrollY + wrapped) / L;
         let lastT = performance.now();
-        let speed = 0;
-        // A short nudge on load so the first figure hints at what it does.
-        let hintUntil = reduceMotion ? 0 : lastT + 650;
 
         function frame(now) {
-          const dt = Math.min(0.05, (now - lastT) / 1000);
+          const dt = Math.min(0.05, Math.max(0, (now - lastT) / 1000));
           lastT = now;
+
+          // Wrap by whole cycles near either end of the runway.
           const y = scrollY;
-          const raw = Math.abs(y - lastY) / Math.max(dt * 1000, 1); // px per ms
-          lastY = y;
-          speed += (raw - speed) * (raw > speed ? 0.35 : 0.2);
-          if (speed < 0.001) speed = 0;
-
-          let target = 1 - Math.exp(-speed / 1.4);
-          if (now < hintUntil) target = Math.max(target, 0.4);
-
-          let spread = 0;
-          let count = 0;
-
-          for (const fig of figs) {
-            fig.state.forEach((s, i) => {
-              const before = s.e;
-              // Opening is quick and firm; closing uses each part's own,
-              // softer spring so they arrive one after another.
-              const opening = target > s.e;
-              const k = opening ? 240 : s.k;
-              const zeta = reduceMotion ? 1 : opening ? 0.9 : 0.55;
-              const c = 2 * zeta * Math.sqrt(k);
-              // Semi-implicit Euler in a few substeps keeps stiff springs stable.
-              const n = 4;
-              const h = dt / n;
-              for (let j = 0; j < n; j++) {
-                s.v += (k * (target - s.e) - c * s.v) * h;
-                s.e += s.v * h;
-                // Parts can't sink into each other: below zero they hit
-                // their seat and bounce, with most of the energy lost.
-                if (s.e < 0) {
-                  s.e = 0;
-                  if (!reduceMotion && s.v < -0.6) {
-                    if (fig.visible) {
-                      const deg = PENTA[i % PENTA.length];
-                      sound.click(fig.def.root * Math.pow(2, deg / 12), -s.v / 5);
-                    }
-                    s.v = -s.v * 0.28;
-                  } else {
-                    s.v = 0;
-                  }
-                }
-              }
-              if (Math.abs(s.v) < 0.0005 && Math.abs(s.e - target) < 0.0005) {
-                s.e = target;
-                s.v = 0;
-              }
-              if (s.e !== before) fig.dirty = true;
-              if (fig.visible) {
-                spread += s.e;
-                count++;
-              }
-            });
-            if (fig.dirty && fig.visible) render(fig);
+          if (y < 1.5 * L || y > (CYCLES - 1.5) * L) {
+            const jump = (HOME - Math.floor(y / L)) * L;
+            scrollTo(0, y + jump);
+            wrapped -= jump;
           }
 
-          spread = count ? spread / count : 0;
-          sound.air(speed, spread);
+          // A little lag behind the finger, so the motion has some weight.
+          const raw = (scrollY + wrapped) / L;
+          const before = shown;
+          shown = reduceMotion ? raw : shown + (raw - shown) * (1 - Math.exp(-dt * 9));
+          if (Math.abs(raw - shown) < 1e-5) shown = raw;
+          const speed = Math.abs(shown - before) / Math.max(dt, 1e-3); // cycles per second
+
+          // Relative to where you started, so the first scroll always begins at rest.
+          const cyc = shown - HOME;
+          const p = cyc - Math.floor(cyc);
+          const n = fig.state.length;
+          const ex = span(p, W.explode);
+          const tu = span(p, W.turn);
+          const co = span(p, W.collapse);
+          const goingDown = shown >= before;
+
+          fig.state.forEach((s, i) => {
+            const prev = s.e;
+            if (p < W.turn[0]) s.e = inOut(local(ex, i, n));
+            else if (p < W.collapse[0]) s.e = 1;
+            // Falling home accelerates into the seat, bottom part first.
+            else s.e = 1 - Math.pow(local(co, i, n), 3);
+            if (prev > 0 && s.e === 0 && goingDown && p >= W.collapse[0]) {
+              const deg = PENTA[i % PENTA.length];
+              sound.click(fig.def.root * Math.pow(2, deg / 12), 0.35 + (prev / Math.max(dt, 1e-3)) / 6);
+            }
+          });
+
+          const turn = inOut(tu);
+          setTurn(turn * Math.PI * 2);
+          render(fig);
+
+          const phase =
+            p < W.explode[0] || p >= W.collapse[1]
+              ? "Assembled"
+              : p < W.turn[0]
+                ? "Exploding"
+                : p < W.collapse[0]
+                  ? "Rotating"
+                  : "Reassembling";
+          fig.status.textContent = `${phase} · ${String(Math.round(turn * 360) % 360).padStart(3, "0")}°`;
+          if (Math.abs(cyc) > 0.04) hint.classList.add("gone");
+
+          const spread = fig.state.reduce((sum, s) => sum + s.e, 0) / n;
+          sound.air(Math.min(3, speed * 2.5), spread);
           if (sound.on) {
             bars.forEach((bar, i) => {
-              const level = Math.min(1, speed * 0.8 + spread * 0.6) * (0.6 + 0.4 * Math.sin(now / 90 + i * 1.7));
+              const level = Math.min(1, speed * 2 + spread * 0.6) * (0.6 + 0.4 * Math.sin(now / 90 + i * 1.7));
               bar.style.height = `${2 + Math.round(Math.max(0, level) * 8)}px`;
             });
           } else {
@@ -911,7 +972,6 @@
           requestAnimationFrame(frame);
         }
 
-        figs.forEach(render);
         requestAnimationFrame(frame);
       })();
     </script>
