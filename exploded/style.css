@@ -1,0 +1,269 @@
+/*
+  The palette is lifted from technical exploded-view drawings: one ink
+  colour for every line, paper for faces, and a single tinted accent for
+  the part the drawing wants you to notice. Side faces get two quiet
+  shades of the ink so the solids read as 3D without any real lighting.
+*/
+/*
+  Moss and mushroom: a deep green ink on unbleached paper, sage faces,
+  and one red accent, the colour your eye goes to first in a forest.
+*/
+:root {
+  --paper: #f4f0e6;
+  --topo: #2e4a3524;
+  --ink: #2e4a35;
+  --ink-soft: #2e4a3599;
+  --face-top: #fbf9f3;
+  --face-x: #eae8da;
+  --face-y: #dcdcc8;
+  --accent-top: #d8553a;
+  --accent-x: #c24a31;
+  --accent-y: #a94029;
+  --hole: #e4dfcf;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #10150f;
+    --topo: #b5cca31f;
+    --ink: #b5cca3;
+    --ink-soft: #b5cca399;
+    --face-top: #182016;
+    --face-x: #141b13;
+    --face-y: #111710;
+    --accent-top: #b44a33;
+    --accent-x: #9c3f2b;
+    --accent-y: #853524;
+    --hole: #0c100b;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--paper);
+  color: var(--ink);
+  /* The page loops (see the script), so a scrollbar would only show its
+     thumb teleporting. Hide it; wheel, touch and keys still scroll. */
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar {
+  display: none;
+}
+
+body {
+  margin: 0;
+  font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+}
+
+header,
+.hud {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding-inline: max(16px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-right));
+  pointer-events: none;
+}
+
+header {
+  top: 0;
+  padding-top: max(16px, env(safe-area-inset-top));
+}
+
+.hud {
+  bottom: 0;
+  align-items: flex-end;
+  padding-bottom: max(20px, env(safe-area-inset-bottom));
+}
+
+header > *,
+.hud > * {
+  pointer-events: auto;
+}
+
+header a {
+  text-decoration: none;
+}
+
+.hud span {
+  color: var(--ink-soft);
+}
+
+.caption {
+  display: grid;
+  gap: 4px;
+}
+
+.readout {
+  text-align: right;
+  display: grid;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hint {
+  position: fixed;
+  left: 50%;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  translate: -50% 0;
+  color: var(--ink-soft);
+  transition: opacity 600ms;
+}
+
+.hint.gone {
+  opacity: 0;
+}
+
+.sound {
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  padding: 6px 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sound:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* A tiny level meter, so you can see the sound is alive before you
+   hear it. Its bars are driven from JS while sound is on. */
+.meter {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 10px;
+}
+
+.meter i {
+  width: 2px;
+  height: 2px;
+  background: currentColor;
+}
+
+/* The drawing never moves; the page scrolls underneath it, and only
+   the scroll position is used. */
+.stage {
+  position: fixed;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* SVG classes. Strokes are non-scaling so the line weight stays a crisp
+   1.25px no matter how big the drawing is rendered. */
+svg * {
+  vector-effect: non-scaling-stroke;
+}
+
+.s {
+  stroke: var(--ink);
+  stroke-width: 1.25;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.top { fill: var(--face-top); }
+.fx { fill: var(--face-x); }
+.fy { fill: var(--face-y); }
+.a.top { fill: var(--accent-top); }
+.a.fx { fill: var(--accent-x); }
+.a.fy { fill: var(--accent-y); }
+.hole { fill: var(--hole); }
+/* Unstroked side fills get a hairline of their own colour so
+   neighbouring facets meet without a seam. */
+.nf { stroke-width: 0.75; }
+.fx.nf { stroke: var(--face-x); }
+.fy.nf { stroke: var(--face-y); }
+.a.fx.nf { stroke: var(--accent-x); }
+.a.fy.nf { stroke: var(--accent-y); }
+.thin { stroke-width: 0.75; }
+.faint { opacity: 0.45; }
+.none { fill: none; }
+
+.guide {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1;
+  stroke-dasharray: 10 7;
+}
+
+.leader {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1;
+}
+
+.head {
+  fill: var(--ink);
+}
+
+.label {
+  fill: var(--ink);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+}
+
+/* Contour lines, drawn once into a canvas behind everything (engine.js). */
+.topo {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
+}
+
+nav {
+  display: flex;
+  gap: 16px;
+}
+
+nav a[aria-current="page"] {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.header-start {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+nav a,
+.sound {
+  white-space: nowrap;
+}
+
+/* On a phone the nav keeps just the figure numbers. */
+@media (max-width: 560px) {
+  nav .long {
+    display: none;
+  }
+}

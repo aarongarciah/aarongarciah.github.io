@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <!-- A sketch, not a page. Keep it out of search until it graduates. -->
+    <meta name="robots" content="noindex" />
+    <title>Beehive — exploded view sketch</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/exploded/style.css" />
+    <style>
+      /* Same moss ink and paper; the accent turns from toadstool red to
+         honey. */
+      :root {
+        --accent-top: #e8b04a;
+        --accent-x: #d69c37;
+        --accent-y: #bf8a2c;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --accent-top: #b9852c;
+          --accent-x: #a07325;
+          --accent-y: #87611f;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <svg class="stage" role="img"></svg>
+
+    <header>
+      <div class="header-start">
+        <a href="/">Aarón García Hervás</a>
+        <nav aria-label="Figures">
+          <a href="/exploded/">Fig. 01<span class="long"> Mushroom</span></a>
+          <a href="/exploded/hive/" aria-current="page">Fig. 02<span class="long"> Beehive</span></a>
+        </nav>
+      </div>
+      <button class="sound" type="button" aria-pressed="false">
+        <span class="meter" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span class="sound-label">Sound off</span>
+      </button>
+    </header>
+
+    <div class="hud">
+      <div class="caption"></div>
+      <div class="readout" aria-hidden="true"><span class="stage-name"></span><span class="angle"></span></div>
+    </div>
+    <p class="hint">Scroll</p>
+
+    <!-- Only here to give the page something to scroll. -->
+    <div class="track"></div>
+
+    <script>
+      /*
+        The figure. Parts are listed in paint order, bottom to top, and
+        their vertical offsets (`off`, where the part goes when fully
+        exploded) only ever grow in that order, so painting in list order is
+        right at any spin. Two exceptions the engine knows about: a `ring`
+        is painted around the part listed right after it, and a `flush`
+        part sits in its host's +x face and slides out sideways.
+
+        `side` picks the label column, `root` the pitch the landing clicks
+        are tuned around, `spin` whether the exploded figure turns round.
+      */
+      window.EXPLODED = {
+        fig: "02",
+        spin: true,
+        // Taller than the default sheet: a hive comes apart into a lot.
+        view: [760, 960],
+        name: "Beehive",
+        note: "Every side has a job. Turn it round.",
+        root: 233,
+        parts: [
+          {
+            name: "Hive stand",
+            side: "l",
+            shape: "box",
+            round: 6,
+            x: [-82, 82], y: [-62, 62], z: [0, 16],
+            sides: [
+              { face: "+x", rect: [-50, 50, 3, 13] },
+              { face: "-x", rect: [-50, 50, 3, 13] },
+            ],
+            off: [0, 0, -160],
+          },
+          {
+            name: "Bottom board",
+            side: "r",
+            shape: "box",
+            round: 6,
+            x: [-75, 75], y: [-56, 56], z: [16, 28],
+            details: [{ rect: [-66, -48, 66, 48], fill: "hole", round: 4 }],
+            off: [0, 0, -85],
+          },
+          {
+            name: "Brood box",
+            side: "l",
+            shape: "box",
+            round: 6,
+            x: [-75, 75], y: [-56, 56], z: [28, 98],
+            // Ten frames hang inside; their top bars are what you see.
+            details: Array.from({ length: 10 }, (_, i) => ({
+              rect: [-62 + i * 13, -50, -56 + i * 13, 50],
+              fill: i % 3 ? "top" : "a top",
+              round: 1,
+            })),
+            sides: [
+              { face: "+y", rect: [-24, 24, 76, 84] },
+              { face: "-y", rect: [-24, 24, 76, 84] },
+              { face: "-x", rect: [-16, 16, 52, 72], fill: "top" },
+            ],
+            off: [0, 0, 0],
+          },
+          {
+            name: "Entrance reducer",
+            side: "r",
+            shape: "box",
+            flush: true,
+            accent: true,
+            round: 2,
+            x: [65, 75], y: [-36, 36], z: [30, 38],
+            off: [90, 0, 10],
+          },
+          {
+            name: "Queen excluder",
+            side: "r",
+            shape: "box",
+            round: 4,
+            x: [-75, 75], y: [-56, 56], z: [98, 101],
+            details: Array.from({ length: 11 }, (_, i) => ({
+              rect: [-66, -46 + i * 9, 66, -44 + i * 9],
+              fill: "hole",
+              round: 1,
+            })),
+            off: [0, 0, 62],
+          },
+          {
+            name: "Honey super",
+            side: "l",
+            shape: "box",
+            round: 6,
+            x: [-75, 75], y: [-56, 56], z: [101, 146],
+            details: [{ hexes: [-66, -48, 66, 48, 7] }],
+            sides: [
+              { face: "+y", rect: [-24, 24, 128, 135] },
+              { face: "-y", rect: [-24, 24, 128, 135] },
+            ],
+            off: [0, 0, 125],
+          },
+          {
+            name: "Inner cover",
+            side: "r",
+            shape: "box",
+            round: 4,
+            x: [-75, 75], y: [-56, 56], z: [146, 152],
+            details: [{ rect: [-14, -8, 14, 8], fill: "hole", round: 8 }],
+            off: [0, 0, 190],
+          },
+          {
+            name: "Outer cover",
+            side: "l",
+            shape: "box",
+            round: 8,
+            x: [-82, 82], y: [-63, 63], z: [140, 164],
+            details: [{ rect: [-70, -52, 70, 52], round: 6 }],
+            sides: [{ face: "+x", rect: [-30, 30, 148, 156], fill: "hole" }],
+            off: [0, 0, 250],
+          },
+        ],
+      };
+    </script>
+    <script src="/exploded/engine.js"></script>
+  </body>
+</html>
