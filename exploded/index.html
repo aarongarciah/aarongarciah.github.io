@@ -16,33 +16,37 @@
         the part the drawing wants you to notice. Side faces get two quiet
         shades of the ink so the solids read as 3D without any real lighting.
       */
+      /*
+        Moss and mushroom: a deep green ink on unbleached paper, sage faces,
+        and one red accent, the colour your eye goes to first in a forest.
+      */
       :root {
-        --paper: #f7f8fc;
-        --dot: #dfe3f4;
-        --ink: #2f4cf0;
-        --ink-soft: #2f4cf099;
-        --face-top: #ffffff;
-        --face-x: #f0f2fb;
-        --face-y: #e5e9fa;
-        --accent-top: #a9b6fb;
-        --accent-x: #95a5fa;
-        --accent-y: #8597f7;
-        --hole: #dfe4fb;
+        --paper: #f4f0e6;
+        --dot: #e2dccb;
+        --ink: #2e4a35;
+        --ink-soft: #2e4a3599;
+        --face-top: #fbf9f3;
+        --face-x: #eae8da;
+        --face-y: #dcdcc8;
+        --accent-top: #d8553a;
+        --accent-x: #c24a31;
+        --accent-y: #a94029;
+        --hole: #e4dfcf;
       }
 
       @media (prefers-color-scheme: dark) {
         :root {
-          --paper: #0b1022;
-          --dot: #1a2244;
-          --ink: #8b9bff;
-          --ink-soft: #8b9bff99;
-          --face-top: #121a36;
-          --face-x: #0f1630;
-          --face-y: #0d132a;
-          --accent-top: #3a49a8;
-          --accent-x: #33419a;
-          --accent-y: #2c398a;
-          --hole: #0a0f20;
+          --paper: #10150f;
+          --dot: #1f281d;
+          --ink: #b5cca3;
+          --ink-soft: #b5cca399;
+          --face-top: #182016;
+          --face-x: #141b13;
+          --face-y: #111710;
+          --accent-top: #b44a33;
+          --accent-x: #9c3f2b;
+          --accent-y: #853524;
+          --hole: #0c100b;
         }
       }
 
@@ -208,6 +212,15 @@
       .a.fx { fill: var(--accent-x); }
       .a.fy { fill: var(--accent-y); }
       .hole { fill: var(--hole); }
+      /* Unstroked side fills get a hairline of their own colour so
+         neighbouring facets meet without a seam. */
+      .nf { stroke-width: 0.75; }
+      .fx.nf { stroke: var(--face-x); }
+      .fy.nf { stroke: var(--face-y); }
+      .a.fx.nf { stroke: var(--accent-x); }
+      .a.fy.nf { stroke: var(--accent-y); }
+      .thin { stroke-width: 0.75; }
+      .faint { opacity: 0.45; }
       .none { fill: none; }
 
       .guide {
@@ -304,15 +317,25 @@
               const cls = d.fill || "none";
               if (d.rect) {
                 const [u0, v0, u1, v1] = d.rect;
-                return poly(
-                  [P(ox + u0, oy + v0, z), P(ox + u1, oy + v0, z), P(ox + u1, oy + v1, z), P(ox + u0, oy + v1, z)],
-                  cls,
-                );
+                const r = d.round ?? 3;
+                return poly(roundRect(ox + u0, ox + u1, oy + v0, oy + v1, r).map((c) => P(...c, z)), cls);
               }
               if (d.circle) {
                 const [u, v, r] = d.circle;
                 const [cx, cy] = P(ox + u, oy + v, z);
                 return `<ellipse class="s ${cls}" cx="${f(cx)}" cy="${f(cy)}" rx="${f(r * RX)}" ry="${f(r * RY)}"/>`;
+              }
+              // Radial lines, for gills and growth marks.
+              if (d.rays) {
+                const [r0, r1, count] = d.rays;
+                let out = "";
+                for (let i = 0; i < count; i++) {
+                  const a = (i / count) * Math.PI * 2;
+                  const [ax, ay] = P(ox + r0 * Math.cos(a), oy + r0 * Math.sin(a), z);
+                  const [bx, by] = P(ox + r1 * Math.cos(a), oy + r1 * Math.sin(a), z);
+                  out += `<line class="s thin" x1="${f(ax)}" y1="${f(ay)}" x2="${f(bx)}" y2="${f(by)}"/>`;
+                }
+                return out;
               }
               return "";
             })
@@ -330,73 +353,192 @@
             { left: list[0], right: list[0] },
           );
 
+        /*
+          Footprints. Everything below is drawn from a closed outline in
+          plan (counter-clockwise), extruded upwards. A rounded rectangle is
+          four quarter-circles joined by straight runs; a circle is just a
+          rounded rectangle that's all corner. `wobble` nudges the radius
+          with a couple of slow sine waves, which is all it takes to turn a
+          disc into a pebble or a patch of ground.
+        */
+        function roundRect(x0, x1, y0, y1, r, seg = 6) {
+          r = Math.max(0, Math.min(r, (x1 - x0) / 2, (y1 - y0) / 2));
+          if (!r) return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+          const out = [];
+          const corners = [
+            [x1 - r, y0 + r, -Math.PI / 2],
+            [x1 - r, y1 - r, 0],
+            [x0 + r, y1 - r, Math.PI / 2],
+            [x0 + r, y0 + r, Math.PI],
+          ];
+          for (const [cx, cy, a0] of corners) {
+            for (let i = 0; i <= seg; i++) {
+              const a = a0 + (i / seg) * (Math.PI / 2);
+              out.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]);
+            }
+          }
+          return out;
+        }
+
+        function circle(cx, cy, r, wobble = 0, seg = 64) {
+          const out = [];
+          for (let i = 0; i < seg; i++) {
+            const a = (i / seg) * Math.PI * 2;
+            const k = 1 + wobble * (0.6 * Math.sin(a * 3 + 1.3) + 0.4 * Math.sin(a * 5 + 0.4));
+            out.push([cx + r * k * Math.cos(a), cy + r * k * Math.sin(a)]);
+          }
+          return out;
+        }
+
+        /*
+          Extrude a convex outline from z0 to z1 (`top` may be a smaller
+          outline, for a frustum). Side quads that face the viewer are filled
+          without strokes, shaded by which way they face, so a rounded corner
+          reads as a soft turn instead of a row of facets. The only lines are
+          the ones a pen would draw: the top outline, the front of the base,
+          and the two silhouette edges.
+        */
+        function prism(base, top, z0, z1, accent) {
+          const a = accent ? "a " : "";
+          const B = base.map((c) => P(...c, z0));
+          const T = top.map((c) => P(...c, z1));
+          const n = base.length;
+          let fills = "";
+          for (let i = 0; i < n; i++) {
+            const j = (i + 1) % n;
+            const [dx, dy] = [base[j][0] - base[i][0], base[j][1] - base[i][1]];
+            if (facing(dy, -dx) <= 1e-6) continue;
+            const cls = a + shade(dy, -dx);
+            fills += `<polygon class="${cls} nf" points="${pts([B[i], B[j], T[j], T[i]])}"/>`;
+          }
+          // Silhouette: the left-most and right-most base points, and the
+          // run of base between them that's nearer the viewer.
+          let l = 0;
+          let r = 0;
+          B.forEach((p, i) => {
+            if (p[0] < B[l][0]) l = i;
+            if (p[0] > B[r][0]) r = i;
+          });
+          const walk = (from, to, step) => {
+            const out = [];
+            for (let i = from; ; i = (i + step + n) % n) {
+              out.push(B[i]);
+              if (i === to) break;
+            }
+            return out;
+          };
+          const a1 = walk(l, r, 1);
+          const a2 = walk(l, r, -1);
+          const avg = (list) => list.reduce((s, p) => s + p[1], 0) / list.length;
+          const front = avg(a1) > avg(a2) ? a1 : a2;
+          const lines =
+            `<polyline class="s none" points="${pts(front)}"/>` +
+            `<line class="s" x1="${f(B[l][0])}" y1="${f(B[l][1])}" x2="${f(T[l][0])}" y2="${f(T[l][1])}"/>` +
+            `<line class="s" x1="${f(B[r][0])}" y1="${f(B[r][1])}" x2="${f(T[r][0])}" y2="${f(T[r][1])}"/>`;
+          const zm = (z0 + z1) / 2;
+          const mid = [P(...base[l], zm), P(...base[r], zm)];
+          return {
+            svg: fills + lines + poly(T, a + "top"),
+            left: mid[0],
+            right: mid[1],
+          };
+        }
+
         const shapes = {
-          // A box, optionally a frustum (`inset` pulls the top face in, which
-          // is all a keycap really is). Of its four sides only the ones facing
-          // the viewer are drawn; a convex solid never overlaps itself, so
-          // they need no sorting among themselves.
+          // A box with softened corners (`round`), optionally a frustum
+          // (`inset` pulls the top in, which is all a keycap really is).
           box(p, o) {
             const [x0, x1] = [p.x[0] + o[0], p.x[1] + o[0]];
             const [y0, y1] = [p.y[0] + o[1], p.y[1] + o[1]];
-            const [z0, z1] = [p.z[0] + o[2], p.z[1] + o[2]];
             const d = p.inset || 0;
-            const a = p.accent ? "a " : "";
-            const B = [
-              [x0, y0],
-              [x1, y0],
-              [x1, y1],
-              [x0, y1],
-            ];
-            const T = [
-              [x0 + d, y0 + d],
-              [x1 - d, y0 + d],
-              [x1 - d, y1 - d],
-              [x0 + d, y1 - d],
-            ];
-            const normals = [
-              [0, -1],
-              [1, 0],
-              [0, 1],
-              [-1, 0],
-            ];
-            let svg = "";
-            normals.forEach(([nx, ny], i) => {
-              if (facing(nx, ny) <= 1e-6) return;
-              const j = (i + 1) % 4;
-              svg += poly(
-                [P(...B[i], z0), P(...B[j], z0), P(...T[j], z1), P(...T[i], z1)],
-                a + shade(nx, ny),
-              );
-            });
-            svg += poly(
-              T.map((c) => P(...c, z1)),
-              a + "top",
+            const r = p.round ?? 10;
+            const out = prism(
+              roundRect(x0, x1, y0, y1, r),
+              roundRect(x0 + d, x1 - d, y0 + d, y1 - d, Math.max(2, r - d / 2)),
+              p.z[0] + o[2],
+              p.z[1] + o[2],
+              p.accent,
             );
-            svg += details(p.details, z1, o[0], o[1]);
-            const zm = (z0 + z1) / 2;
-            return { svg, ...extremes(B.map((c) => P(...c, zm))) };
+            out.svg += details(p.details, p.z[1] + o[2], o[0], o[1]);
+            return out;
           },
 
+          // A disc, or with `wobble`, a pebble-ish slab.
           cyl(p, o) {
             const [cx, cy] = [(p.c?.[0] || 0) + o[0], (p.c?.[1] || 0) + o[1]];
+            const outline = circle(cx, cy, p.r, p.wobble || 0);
+            const out = prism(outline, outline, p.z[0] + o[2], p.z[1] + o[2], p.accent);
+            out.svg += details(p.details, p.z[1] + o[2], cx, cy);
+            return out;
+          },
+
+          /*
+            A ring around another part (a mushroom's annulus). It's drawn
+            twice: whole, before the part it wraps, then just its front half
+            (clipped below its own centre line) after it, so the stem
+            passes through instead of sitting on top or behind.
+          */
+          ring(p, o) {
+            const [cx, cy] = [o[0], o[1]];
             const [z0, z1] = [p.z[0] + o[2], p.z[1] + o[2]];
-            const rx = p.r * RX;
-            const ry = p.r * RY;
+            const outer = prism(circle(cx, cy, p.r), circle(cx, cy, p.r), z0, z1, p.accent);
+            const [hx, hy] = P(cx, cy, z1);
+            // The hole: knock the inner ellipse out of the top with a paper
+            // fill (the stem is drawn over it), plus the inner wall's lower lip.
+            const hole =
+              `<ellipse class="s hole" cx="${f(hx)}" cy="${f(hy)}" rx="${f(p.inner * RX)}" ry="${f(p.inner * RY)}"/>`;
+            const svg = outer.svg + hole;
+            const id = `clip-${p.name.replace(/\W/g, "")}`;
+            const [, by] = P(cx, cy, z0);
+            const frontHalf =
+              `<clipPath id="${id}"><rect x="-2000" y="${f(hy)}" width="4000" height="${f(by - hy + 400)}"/></clipPath>` +
+              `<g clip-path="url(#${id})">${outer.svg}<ellipse class="s none" cx="${f(hx)}" cy="${f(hy)}" ` +
+              `rx="${f(p.inner * RX)}" ry="${f(p.inner * RY)}"/></g>`;
+            return { svg, after: frontHalf, left: outer.left, right: outer.right };
+          },
+
+          /*
+            A dome: the top half of a squashed sphere, radius r, height h.
+            Under any orthographic view a spheroid's outline is an ellipse.
+            Its width is the same as the base circle's; its height comes
+            from projecting the semi-axes onto screen y, (x + y) / 2 - z,
+            which gives sqrt(r²/2 + h²). So: the upper half of that ellipse,
+            closed by the front half of the base ellipse.
+          */
+          dome(p, o) {
+            const [cx, cy] = [o[0], o[1]];
+            const z0 = p.z[0] + o[2];
             const [bx, by] = P(cx, cy, z0);
-            const [, ty] = P(cx, cy, z1);
+            const rx = p.r * RX;
+            const ryb = p.r * RY;
+            const rys = Math.sqrt((p.r * p.r) / 2 + p.h * p.h);
             const a = p.accent ? "a " : "";
-            // Side wall: down the left edge, round the front half of the
-            // bottom ellipse (sweep 0 goes via the bottom on screen), back up.
-            const side =
-              `<path class="s ${a}fx" d="M${f(bx - rx)},${f(ty)} L${f(bx - rx)},${f(by)} ` +
-              `A${f(rx)},${f(ry)} 0 0 0 ${f(bx + rx)},${f(by)} L${f(bx + rx)},${f(ty)} Z"/>`;
-            const top = `<ellipse class="s ${a}top" cx="${f(bx)}" cy="${f(ty)}" rx="${f(rx)}" ry="${f(ry)}"/>`;
-            const ym = (by + ty) / 2;
-            return {
-              svg: side + top + details(p.details, z1, cx, cy),
-              left: [bx - rx, ym],
-              right: [bx + rx, ym],
-            };
+            let svg =
+              `<path class="s ${a}top" d="M${f(bx - rx)},${f(by)} A${f(rx)},${f(rys)} 0 0 1 ${f(bx + rx)},${f(by)} ` +
+              `A${f(rx)},${f(ryb)} 0 0 1 ${f(bx - rx)},${f(by)} Z"/>`;
+            // A couple of faint latitude lines (their front halves) give the
+            // dome its roundness without any shading.
+            for (const k of [0.38, 0.72]) {
+              const rr = p.r * Math.sqrt(1 - k * k);
+              const [, ly] = P(cx, cy, z0 + p.h * k);
+              svg +=
+                `<path class="s none faint" d="M${f(bx - rr * RX)},${f(ly)} ` +
+                `A${f(rr * RX)},${f(rr * RY)} 0 0 0 ${f(bx + rr * RX)},${f(ly)}"/>`;
+            }
+            // Spots sit on the surface. Only the ones whose surface normal
+            // points at the viewer, (1, 1, 1) in iso, are drawn.
+            for (const [u, v, s] of p.spots || []) {
+              const q = Math.min(0.98, (u * u + v * v) / (p.r * p.r));
+              const z = p.h * Math.sqrt(1 - q);
+              const [nx, ny] = R(u / (p.r * p.r), v / (p.r * p.r));
+              const nz = z / (p.h * p.h);
+              if (nx + ny + nz <= 0) continue;
+              const [sx, sy] = P(cx + u, cy + v, z0 + z);
+              // Foreshorten each spot by how much it tilts away.
+              const tilt = Math.max(0.35, nz / Math.hypot(nx, ny, nz));
+              svg += `<ellipse class="s top" cx="${f(sx)}" cy="${f(sy)}" rx="${f(s * RX)}" ry="${f(s * RY * (0.6 + tilt))}"/>`;
+            }
+            return { svg, left: [bx - rx, by], right: [bx + rx, by] };
           },
 
           // A coil spring. Its height grows with the part's explode amount so
@@ -434,6 +576,76 @@
           clicks are tuned around.
         */
         const FIGURES = {
+          mushroom: {
+            name: "Mushroom",
+            note: "Most of it lives underground.",
+            root: 196,
+            parts: [
+              {
+                name: "Soil",
+                side: "l",
+                shape: "cyl",
+                r: 118, wobble: 0.08, z: [0, 14],
+                details: [
+                  { circle: [-70, 30, 7], fill: "hole" },
+                  { circle: [-52, 46, 4], fill: "hole" },
+                  { circle: [64, -40, 6], fill: "hole" },
+                  { circle: [40, 70, 5], fill: "hole" },
+                  { circle: [-20, -80, 4], fill: "hole" },
+                ],
+                off: [0, 0, -170],
+              },
+              {
+                name: "Mycelium",
+                side: "r",
+                shape: "cyl",
+                r: 96, wobble: 0.1, z: [14, 20],
+                details: [{ rays: [30, 88, 22] }, { circle: [0, 0, 30] }],
+                off: [0, 0, -115],
+              },
+              {
+                name: "Volva",
+                side: "l",
+                shape: "cyl",
+                r: 27, wobble: 0.06, z: [20, 36],
+                off: [0, 0, -60],
+              },
+              {
+                name: "Annulus",
+                side: "r",
+                shape: "ring",
+                r: 32, inner: 16, z: [72, 78],
+                off: [0, 0, 55],
+              },
+              {
+                name: "Stipe",
+                side: "l",
+                shape: "cyl",
+                r: 16, z: [36, 112],
+                off: [0, 0, 0],
+              },
+              {
+                name: "Gills",
+                side: "r",
+                shape: "cyl",
+                r: 82, z: [108, 114],
+                details: [{ rays: [20, 78, 40] }, { circle: [0, 0, 16], fill: "hole" }],
+                off: [0, 0, 95],
+              },
+              {
+                name: "Cap",
+                side: "l",
+                shape: "dome",
+                accent: true,
+                r: 90, h: 66, z: [110],
+                spots: [
+                  [0, 0, 10], [42, -18, 8], [-30, 36, 9], [22, 54, 7], [-52, -8, 8],
+                  [60, 28, 6], [-14, -56, 7], [58, -50, 5], [-62, 48, 5],
+                ],
+                off: [0, 0, 175],
+              },
+            ],
+          },
           cube: {
             name: "Cube",
             note: "A plain block, until you look inside.",
@@ -627,9 +839,9 @@
           },
         };
 
-        // ?fig=key (or cylinder, steps) to try the other figures.
+        // ?fig=cube (or key, cylinder, steps) to try the other figures.
         const pick = new URLSearchParams(location.search).get("fig");
-        const def = FIGURES[pick] || FIGURES.cube;
+        const def = FIGURES[pick] || FIGURES.mushroom;
 
         const zs = def.parts.flatMap((p) => p.z.concat(p.h ? [p.z[0] + p.h] : []));
         const zc = (Math.min(...zs) + Math.max(...zs)) / 2;
@@ -670,6 +882,9 @@
           let front = "";
           let labels = "";
           const pending = [];
+          // A ring's front half waits here to be painted over whatever it
+          // wraps, which is the part listed right after it.
+          let carry = "";
 
           def.parts.forEach((p, i) => {
             const { e } = state[i];
@@ -705,7 +920,10 @@
                   hidden = true;
                 }
               }
-            } else body += cur.svg;
+            } else {
+              body += cur.svg + carry;
+              carry = cur.after || "";
+            }
 
             const travel = Math.hypot(...p.off) * e;
             if (travel > 4) {
@@ -762,7 +980,7 @@
             }
           }
 
-          svg.innerHTML = guides + behind + body + front + labels;
+          svg.innerHTML = guides + behind + body + carry + front + labels;
         }
 
         /*
@@ -899,6 +1117,14 @@
         const STAGGER = 0.45;
         const n = def.parts.length;
         const partT = (t, i) => clamp01((t - (i / Math.max(1, n - 1)) * STAGGER) / (1 - STAGGER));
+        // The outermost parts (the ones that travel furthest) leave first and
+        // come back last, so nothing ever has to pass through a neighbour
+        // that hasn't got out of the way yet.
+        const rank = def.parts.map(() => 0);
+        def.parts
+          .map((p, i) => [Math.hypot(...p.off), i])
+          .sort((a, b) => b[0] - a[0])
+          .forEach(([, i], r) => (rank[i] = r));
 
         function pose(u) {
           const out = span(u, PHASES[0][1], PHASES[1][1]);
@@ -910,10 +1136,10 @@
             // lands with a knock instead of drifting into place.
             e: (i) =>
               u < PHASES[1][1]
-                ? smooth(partT(out, i))
+                ? smooth(partT(out, rank[i]))
                 : u < PHASES[2][1]
                   ? 1
-                  : Math.sin((1 - partT(back, n - 1 - i)) * (Math.PI / 2)),
+                  : Math.sin((1 - partT(back, n - 1 - rank[i])) * (Math.PI / 2)),
             theta: smooth(spin) * Math.PI * 2,
             stage: PHASES.find(([, end]) => u < end)?.[0] ?? "Assembled",
           };
@@ -959,7 +1185,7 @@
           state.forEach((s, i) => {
             const next = e(i);
             // Landing: the part was in the air and now it's home.
-            if (s.e > 0.002 && next <= 0.002) {
+            if (s.e > 0.002 && next <= 0.002 && Math.hypot(...def.parts[i].off) > 0) {
               const hit = Math.min(1, (s.e - next) / Math.max(dt, 1e-3) / 3);
               sound.click(def.root * Math.pow(2, PENTA[i % PENTA.length] / 12), 0.25 + hit);
               if (!reduceMotion) {
